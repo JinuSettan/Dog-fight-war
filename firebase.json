@@ -1,0 +1,8 @@
+{
+  "firestore": [
+    {
+      "database": "ai-studio-android-3dflight-ef6ae019-7cf3-4f09-9b0d-45216ce4d533",
+      "rules": "firestore.rules"
+    }
+  ]
+}

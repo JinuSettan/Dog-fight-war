@@ -1,0 +1,66 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+
+    function isOwner(userId) {
+      return isAuthenticated() && request.auth.uid == userId;
+    }
+
+    function isValidPilotProfile(data, userId) {
+      return data.size() >= 5 &&
+        data.uid == userId &&
+        data.displayName is string &&
+        data.totalFlights is number &&
+        data.carrierLandings is number &&
+        data.createdAt is timestamp &&
+        data.updatedAt is timestamp;
+    }
+
+    function isValidFlightLog(data, userId) {
+      return data.size() >= 6 &&
+        data.userId == userId &&
+        data.aircraftName is string &&
+        data.maxAirspeedKnots is number &&
+        data.maxAltitudeFeet is number &&
+        data.flightTimeSeconds is number &&
+        data.timestamp is timestamp;
+    }
+
+    function isValidMultiplayerPlayer(data, userId) {
+      return data.size() >= 10 &&
+        data.uid == userId &&
+        data.callsign is string &&
+        data.aircraftName is string &&
+        data.lat is number &&
+        data.lon is number &&
+        data.altFeet is number &&
+        data.headingDeg is number &&
+        data.pitchDeg is number &&
+        data.rollDeg is number &&
+        data.airspeedKnots is number &&
+        data.lastUpdated is timestamp;
+    }
+
+    match /users/{userId} {
+      allow read: if isOwner(userId);
+      allow create, update: if isOwner(userId) && isValidPilotProfile(request.resource.data, userId);
+      allow delete: if false;
+
+      match /flightLogs/{logId} {
+        allow read: if isOwner(userId);
+        allow create, update: if isOwner(userId) && isValidFlightLog(request.resource.data, userId);
+        allow delete: if isOwner(userId);
+      }
+    }
+
+    match /multiplayerRooms/{roomId}/players/{userId} {
+      allow read: if isAuthenticated();
+      allow create, update: if isOwner(userId) && isValidMultiplayerPlayer(request.resource.data, userId);
+      allow delete: if isOwner(userId);
+    }
+  }
+}

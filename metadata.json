@@ -1,0 +1,6 @@
+{
+  "name": "Flight Sim",
+  "description": "Realistic 6-DOF physics-driven 3D flight simulator featuring real-time thrust, lift, drag, gravity, angle of attack, stall behavior, runway takeoff sequence, and landing touchdown physics over 3D terrain and real-world maps.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

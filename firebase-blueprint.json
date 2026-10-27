@@ -1,0 +1,46 @@
+{
+  "entities": {
+    "PilotProfile": {
+      "collectionPath": "users",
+      "fields": {
+        "uid": { "type": "string", "required": true },
+        "displayName": { "type": "string", "required": true },
+        "email": { "type": "string", "required": false },
+        "createdAt": { "type": "timestamp", "required": true },
+        "updatedAt": { "type": "timestamp", "required": true },
+        "totalFlights": { "type": "number", "required": true },
+        "carrierLandings": { "type": "number", "required": true }
+      }
+    },
+    "FlightLog": {
+      "collectionPath": "users/{userId}/flightLogs",
+      "fields": {
+        "id": { "type": "string", "required": true },
+        "userId": { "type": "string", "required": true },
+        "aircraftName": { "type": "string", "required": true },
+        "maxAirspeedKnots": { "type": "number", "required": true },
+        "maxAltitudeFeet": { "type": "number", "required": true },
+        "flightTimeSeconds": { "type": "number", "required": true },
+        "landingQuality": { "type": "string", "required": false },
+        "sinkRateFpm": { "type": "number", "required": false },
+        "timestamp": { "type": "timestamp", "required": true }
+      }
+    },
+    "MultiplayerPlayer": {
+      "collectionPath": "multiplayerRooms/{roomId}/players",
+      "fields": {
+        "uid": { "type": "string", "required": true },
+        "callsign": { "type": "string", "required": true },
+        "aircraftName": { "type": "string", "required": true },
+        "lat": { "type": "number", "required": true },
+        "lon": { "type": "number", "required": true },
+        "altFeet": { "type": "number", "required": true },
+        "headingDeg": { "type": "number", "required": true },
+        "pitchDeg": { "type": "number", "required": true },
+        "rollDeg": { "type": "number", "required": true },
+        "airspeedKnots": { "type": "number", "required": true },
+        "lastUpdated": { "type": "timestamp", "required": true }
+      }
+    }
+  }
+}
