@@ -182,9 +182,10 @@ function buildLobby() {
       <div class="row"><label>Sound</label>${seg('sound', [[true, 'On'], [false, 'Off']], S.sound)}</div>
       <div class="card" style="cursor:default"><h3><span>Real 3D world (buildings)</span><span class="status" id="tileStatus"><i></i><b>…</b></span></h3>
         <p>Paste <b>one</b> of these keys, then press Apply. Without a key you get the offline demo terrain.</p>
-        <div class="row" style="margin:4px 0"><label>Google Maps<br>Tiles API key</label><input type="text" id="apiKey" value="${S.apiKey || ''}" placeholder="AIza…" autocomplete="off" spellcheck="false"></div>
-        <div class="row" style="margin:4px 0"><label>Cesium ion<br>token (free)</label><input type="text" id="ionKey" value="${S.ionToken || ''}" placeholder="eyJ…" autocomplete="off" spellcheck="false"></div>
-        <div class="row" style="margin:4px 0"><button class="btn pri" id="applyKey">Apply</button></div>
+        <p class="note">Token fields are locked by default. Enter the settings password to reveal them.</p>
+        <div class="row" style="margin:4px 0"><label>Google Maps<br>Tiles API key</label><input type="password" id="apiKey" value="${S.apiKey || ''}" placeholder="Locked" autocomplete="off" spellcheck="false" readonly></div>
+        <div class="row" style="margin:4px 0"><label>Cesium ion<br>token (free)</label><input type="password" id="ionKey" value="${S.ionToken || ''}" placeholder="Locked" autocomplete="off" spellcheck="false" readonly></div>
+        <div class="row" style="margin:4px 0"><button class="btn" id="unlockKeys">Unlock token fields</button><button class="btn pri" id="applyKey">Apply</button></div>
         <div class="note">Google: enable “Map Tiles API” (billing account needed, free monthly credit). Cesium ion: free account at ion.cesium.com → Access Tokens → copy the default token; it streams the same Google Photorealistic 3D Tiles. 4K needs a strong GPU, use Auto on phones.</div></div>`;
   } else if (G.tab === 'controls') {
     html = `<div class="row"><label>Tilt steering</label>${seg('tilt', [[false, 'Off'], [true, 'On (tilt phone)']], S.tilt)}</div>
@@ -208,7 +209,24 @@ function buildLobby() {
   pane.scrollTop = keepScroll;
   if (G.tab === 'airport') { renderAirports(''); $('aptSearch').oninput = (e) => renderAirports(e.target.value); }
   if (G.tab === 'flight') { renderDests(''); $('destSearch').oninput = (e) => renderDests(e.target.value); }
-  if (G.tab === 'graphics') $('applyKey').onclick = applyKey;
+  if (G.tab === 'graphics') {
+    $('applyKey').onclick = applyKey;
+    $('unlockKeys').onclick = () => {
+      const entered = window.prompt('Enter settings password to reveal API tokens:');
+      if (entered !== 'gpt@007') {
+        if (entered !== null) window.alert('Incorrect password.');
+        return;
+      }
+      for (const id of ['apiKey', 'ionKey']) {
+        const field = $(id);
+        field.type = 'text';
+        field.readOnly = false;
+        field.placeholder = id === 'apiKey' ? 'AIza…' : 'eyJ…';
+      }
+      $('unlockKeys').textContent = 'Unlocked';
+      $('unlockKeys').disabled = true;
+    };
+  }
   updateTileStatus();
 }
 
