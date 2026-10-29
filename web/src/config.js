@@ -74,16 +74,12 @@ export const WAR_LIST = ['f15e', 'mig29', 'mig35', 'eagle'];
 export const AIRLINE_LIST = ['a318'];
 export const ENEMY_TYPES = ['mig29', 'mig35'];
 
-// Airports (reference point lat/lon, field elevation, runway true heading, runway length).
-// Reference points are not exact runway centres: use the "fine tune" sliders in the lobby
-// to line the virtual runway up with the real one.
+// Airports (runway reference point, field elevation, runway true heading, runway length).
+// Single virtual runway per preset: the values below are representative and must be verified in-game.
+// Exact threshold coordinates and parallel-runway selection will be refined in a later alignment pass.
 export const AIRPORTS = [
-  // Runway 09/27 midpoint from AAI eAIP threshold/end coordinates; true bearing 87.64°.
+  // India
   { icao: 'VOCI', iata: 'COK', name: 'Cochin International', city: 'Kochi', country: 'India', lat: 10.15112, lon: 76.40051, elev: 9, hdg: 87.64, len: 3400 },
-  // Pakistan airport reference/runway data; verify exact touchdown alignment in-game.
-  { icao: 'OPLA', iata: 'LHE', name: 'Allama Iqbal International', city: 'Lahore', country: 'Pakistan', lat: 31.52155, lon: 74.40455, elev: 217, hdg: 181, len: 3360 },
-  { icao: 'OPIS', iata: 'ISB', name: 'Islamabad International', city: 'Islamabad', country: 'Pakistan', lat: 33.54815, lon: 72.82544, elev: 537, hdg: 100.35, len: 3658 },
-  { icao: 'OPKC', iata: 'KHI', name: 'Jinnah International', city: 'Karachi', country: 'Pakistan', lat: 24.90667, lon: 67.16083, elev: 31, hdg: 75, len: 3500 },
   { icao: 'VOTV', iata: 'TRV', name: 'Trivandrum International', city: 'Thiruvananthapuram', country: 'India', lat: 8.4821, lon: 76.9201, elev: 5, hdg: 138, len: 3400 },
   { icao: 'VOCL', iata: 'CCJ', name: 'Calicut International', city: 'Kozhikode', country: 'India', lat: 11.1368, lon: 75.9553, elev: 104, hdg: 100, len: 2860 },
   { icao: 'VOKN', iata: 'CNN', name: 'Kannur International', city: 'Kannur', country: 'India', lat: 11.9186, lon: 75.5472, elev: 104, hdg: 70, len: 3050 },
@@ -91,9 +87,25 @@ export const AIRPORTS = [
   { icao: 'VIDP', iata: 'DEL', name: 'Indira Gandhi International', city: 'Delhi', country: 'India', lat: 28.5562, lon: 77.1000, elev: 237, hdg: 110, len: 4430 },
   { icao: 'VOBL', iata: 'BLR', name: 'Kempegowda International', city: 'Bengaluru', country: 'India', lat: 13.1986, lon: 77.7066, elev: 915, hdg: 90, len: 4000 },
   { icao: 'VOMM', iata: 'MAA', name: 'Chennai International', city: 'Chennai', country: 'India', lat: 12.9941, lon: 80.1709, elev: 16, hdg: 70, len: 3658 },
+  { icao: 'VOHS', iata: 'HYD', name: 'Rajiv Gandhi International', city: 'Hyderabad', country: 'India', lat: 17.2403, lon: 78.4294, elev: 617, hdg: 90, len: 4260 },
+
+  // Pakistan
+  { icao: 'OPLA', iata: 'LHE', name: 'Allama Iqbal International', city: 'Lahore', country: 'Pakistan', lat: 31.52155, lon: 74.40455, elev: 217, hdg: 181, len: 3360 },
+  { icao: 'OPIS', iata: 'ISB', name: 'Islamabad International', city: 'Islamabad', country: 'Pakistan', lat: 33.54815, lon: 72.82544, elev: 537, hdg: 100.35, len: 3658 },
+  { icao: 'OPKC', iata: 'KHI', name: 'Jinnah International', city: 'Karachi', country: 'Pakistan', lat: 24.90667, lon: 67.16083, elev: 31, hdg: 75, len: 3500 },
+
+  // Afghanistan — Kabul Airport Reference Point from Afghanistan AIP; runway geometry is approximate.
+  { icao: 'OAKB', iata: 'KBL', name: 'Kabul International', city: 'Kabul', country: 'Afghanistan', lat: 34.5658, lon: 69.2125, elev: 1791, hdg: 110, len: 3500 },
+  { icao: 'OAKN', iata: 'KDH', name: 'Ahmad Shah Baba International', city: 'Kandahar', country: 'Afghanistan', lat: 31.5058, lon: 65.8478, elev: 1010, hdg: 50, len: 3200 },
+
+  // China — Beijing runway 01/19 midpoint derived from published runway-end coordinates.
+  { icao: 'ZBAA', iata: 'PEK', name: 'Beijing Capital International', city: 'Beijing', country: 'China', lat: 40.075874, lon: 116.614948, elev: 28, hdg: 353, len: 3800 },
+  // Shanghai Pudong runway 17L/35R approximate midpoint from published runway-end coordinates.
+  { icao: 'ZSPD', iata: 'PVG', name: 'Shanghai Pudong International', city: 'Shanghai', country: 'China', lat: 31.1450, lon: 121.7933, elev: 4, hdg: 168, len: 4000 },
+
+  // Other international airports
   { icao: 'OMDB', iata: 'DXB', name: 'Dubai International', city: 'Dubai', country: 'UAE', lat: 25.2532, lon: 55.3657, elev: 19, hdg: 120, len: 4000 },
   { icao: 'EGLL', iata: 'LHR', name: 'London Heathrow', city: 'London', country: 'UK', lat: 51.4700, lon: -0.4543, elev: 25, hdg: 270, len: 3902 },
-  // Approximate midpoint of real runway 13R/31L; true runway heading 121°.
   { icao: 'KJFK', iata: 'JFK', name: 'John F. Kennedy', city: 'New York', country: 'USA', lat: 40.63818, lon: -73.79425, elev: 4, hdg: 121, len: 4423 },
   { icao: 'KLAX', iata: 'LAX', name: 'Los Angeles International', city: 'Los Angeles', country: 'USA', lat: 33.9416, lon: -118.4085, elev: 38, hdg: 250, len: 3685 },
   { icao: 'KSFO', iata: 'SFO', name: 'San Francisco International', city: 'San Francisco', country: 'USA', lat: 37.6213, lon: -122.3790, elev: 4, hdg: 280, len: 3618 },
@@ -101,7 +113,6 @@ export const AIRPORTS = [
   { icao: 'WSSS', iata: 'SIN', name: 'Singapore Changi', city: 'Singapore', country: 'Singapore', lat: 1.3644, lon: 103.9915, elev: 7, hdg: 20, len: 4000 },
   { icao: 'YSSY', iata: 'SYD', name: 'Sydney Kingsford Smith', city: 'Sydney', country: 'Australia', lat: -33.9399, lon: 151.1753, elev: 6, hdg: 160, len: 3962 },
   { icao: 'LFPG', iata: 'CDG', name: 'Paris Charles de Gaulle', city: 'Paris', country: 'France', lat: 49.0097, lon: 2.5479, elev: 119, hdg: 85, len: 4215 },
-  { icao: 'VOHS', iata: 'HYD', name: 'Rajiv Gandhi International', city: 'Hyderabad', country: 'India', lat: 17.2403, lon: 78.4294, elev: 617, hdg: 90, len: 4260 },
   { icao: 'OTHH', iata: 'DOH', name: 'Hamad International', city: 'Doha', country: 'Qatar', lat: 25.2731, lon: 51.6081, elev: 4, hdg: 160, len: 4850 },
   { icao: 'OMAA', iata: 'AUH', name: 'Zayed International', city: 'Abu Dhabi', country: 'UAE', lat: 24.4330, lon: 54.6511, elev: 27, hdg: 130, len: 4100 },
   { icao: 'EDDF', iata: 'FRA', name: 'Frankfurt Airport', city: 'Frankfurt', country: 'Germany', lat: 50.0379, lon: 8.5622, elev: 111, hdg: 70, len: 4000 },
@@ -109,19 +120,12 @@ export const AIRPORTS = [
   { icao: 'KATL', iata: 'ATL', name: 'Hartsfield-Jackson Atlanta', city: 'Atlanta', country: 'USA', lat: 33.6407, lon: -84.4277, elev: 313, hdg: 90, len: 3048 },
 ];
 
+// Difficulty presets for enemy AI
 export const DIFFICULTY = {
   easy: { name: 'Easy', turnG: 4.5, fireGap: 18, gunAcc: 0.35, hp: 70, speed: 0.8, flare: 0.1 },
   normal: { name: 'Normal', turnG: 6.0, fireGap: 12, gunAcc: 0.55, hp: 100, speed: 0.95, flare: 0.3 },
   ace: { name: 'Ace', turnG: 7.5, fireGap: 7, gunAcc: 0.8, hp: 130, speed: 1.05, flare: 0.5 },
 };
-
-export const RESOLUTIONS = [
-  { id: 'auto', name: 'Auto (adaptive)', h: 0 },
-  { id: '720', name: '720p', h: 720 },
-  { id: '1080', name: '1080p', h: 1080 },
-  { id: '1440', name: '1440p (2K)', h: 1440 },
-  { id: '2160', name: '2160p (4K)', h: 2160 },
-];
 
 // 3D tile detail: lower screen-space-error = sharper (and heavier)
 export const TILE_QUALITY = [
