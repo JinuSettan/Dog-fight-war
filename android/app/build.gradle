@@ -1,0 +1,44 @@
+plugins {
+    id 'com.android.application'
+}
+
+android {
+    namespace 'com.dogfight.war'
+    compileSdk 34
+
+    defaultConfig {
+        applicationId 'com.dogfight.war'
+        minSdk 24
+        targetSdk 34
+        versionCode 1
+        versionName '1.0'
+    }
+
+    buildTypes {
+        release {
+            minifyEnabled false
+            // signed with the debug key so the APK installs directly (sideloading).
+            // For Play Store upload, replace with your own release keystore.
+            signingConfig signingConfigs.debug
+        }
+    }
+
+    // the game assets (3D models, js) are already compressed / large: do not compress glb + wasm again
+    androidResources {
+        noCompress 'glb', 'wasm', 'bin'
+    }
+
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_17
+        targetCompatibility JavaVersion.VERSION_17
+    }
+
+    lint {
+        abortOnError false
+        checkReleaseBuilds false
+    }
+}
+
+dependencies {
+    implementation 'androidx.webkit:webkit:1.11.0'
+}
