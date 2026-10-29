@@ -94,8 +94,8 @@ export const AIRPORTS = [
   { icao: 'OPIS', iata: 'ISB', name: 'Islamabad International', city: 'Islamabad', country: 'Pakistan', lat: 33.54815, lon: 72.82544, elev: 537, hdg: 100.35, len: 3658 },
   { icao: 'OPKC', iata: 'KHI', name: 'Jinnah International', city: 'Karachi', country: 'Pakistan', lat: 24.90667, lon: 67.16083, elev: 31, hdg: 75, len: 3500 },
 
-  // Afghanistan — Kabul Airport Reference Point from Afghanistan AIP; runway geometry is approximate.
-  { icao: 'OAKB', iata: 'KBL', name: 'Kabul International', city: 'Kabul', country: 'Afghanistan', lat: 34.5658, lon: 69.2125, elev: 1791, hdg: 110, len: 3500 },
+  // Afghanistan — Kabul RWY 11/29 midpoint estimated from published threshold coordinates; true heading about 104°.
+  { icao: 'OAKB', iata: 'KBL', name: 'Kabul International', city: 'Kabul', country: 'Afghanistan', lat: 34.5658, lon: 69.2125, elev: 1791, hdg: 104, len: 3500 },
   { icao: 'OAKN', iata: 'KDH', name: 'Ahmad Shah Baba International', city: 'Kandahar', country: 'Afghanistan', lat: 31.5058, lon: 65.8478, elev: 1010, hdg: 50, len: 3200 },
 
   // China — Beijing runway 01/19 midpoint derived from published runway-end coordinates.
