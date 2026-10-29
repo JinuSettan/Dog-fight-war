@@ -78,7 +78,8 @@ export const ENEMY_TYPES = ['mig29', 'mig35'];
 // Reference points are not exact runway centres: use the "fine tune" sliders in the lobby
 // to line the virtual runway up with the real one.
 export const AIRPORTS = [
-  { icao: 'VOCI', iata: 'COK', name: 'Cochin International', city: 'Kochi', country: 'India', lat: 10.1520, lon: 76.4019, elev: 8, hdg: 90, len: 3400 },
+  // Runway 09/27 midpoint from AAI eAIP threshold/end coordinates; true bearing 87.64°.
+  { icao: 'VOCI', iata: 'COK', name: 'Cochin International', city: 'Kochi', country: 'India', lat: 10.15112, lon: 76.40051, elev: 9, hdg: 87.64, len: 3400 },
   { icao: 'VOTV', iata: 'TRV', name: 'Trivandrum International', city: 'Thiruvananthapuram', country: 'India', lat: 8.4821, lon: 76.9201, elev: 5, hdg: 138, len: 3400 },
   { icao: 'VOCL', iata: 'CCJ', name: 'Calicut International', city: 'Kozhikode', country: 'India', lat: 11.1368, lon: 75.9553, elev: 104, hdg: 100, len: 2860 },
   { icao: 'VOKN', iata: 'CNN', name: 'Kannur International', city: 'Kannur', country: 'India', lat: 11.9186, lon: 75.5472, elev: 104, hdg: 70, len: 3050 },
