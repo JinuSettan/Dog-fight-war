@@ -8,7 +8,7 @@ export const defaults = {
   category: 'war',           // war | airline
   aircraft: 'f15e',
   warAircraft: 'f15e',
-  airport: 'VOCI',           // departure airport (also the war-mode airport)
+  airport: 'KJFK',           // New York JFK is the default departure / war-mode airport
   dest: 'OMDB',              // airliner destination
   time: 'noon',
   mode: 'dogfight',          // dogfight | free
@@ -34,6 +34,9 @@ export function loadSettings() {
   let s = {};
   try { s = JSON.parse(localStorage.getItem(KEY) || '{}'); } catch (e) { /* ignore */ }
   const out = { ...defaults, ...s };
+  // Migrate the app's former default departure (Cochin) to the requested New York JFK start.
+  // Keep any other airport the player deliberately selected.
+  if (!s.airport || s.airport === 'VOCI') out.airport = 'KJFK';
   if (!out.apiKey) out.apiKey = defaults.apiKey;
   if (!out.ionToken) out.ionToken = defaults.ionToken;
   out.tune = { ...(s.tune || {}) };
