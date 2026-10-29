@@ -127,6 +127,17 @@ export const DIFFICULTY = {
   ace: { name: 'Ace', turnG: 7.5, fireGap: 7, gunAcc: 0.8, hp: 130, speed: 1.05, flare: 0.5 },
 };
 
+// Render-height presets. 'auto' dynamically scales to maintain playable frame rate.
+// 4K is an optional output target; device/GPU limits and adaptive scaling still apply.
+export const RESOLUTIONS = [
+  { id: 'auto', name: 'Auto', h: 900 },
+  { id: '540', name: '540p', h: 540 },
+  { id: '720', name: '720p', h: 720 },
+  { id: '1080', name: '1080p', h: 1080 },
+  { id: '1440', name: '1440p', h: 1440 },
+  { id: '2160', name: '4K', h: 2160 },
+];
+
 // 3D tile detail: lower screen-space-error = sharper (and heavier)
 export const TILE_QUALITY = [
   { id: 'low', name: 'Low', sse: 48 },
