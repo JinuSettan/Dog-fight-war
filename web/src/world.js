@@ -296,9 +296,14 @@ export class World {
     if (!this.tiles || !this.tiles.root) return false;
     this.worldRoot.position.y = 0; this.worldRoot.updateMatrixWorld(true);
     const hits = [];
-    for (const [x, z] of [[0, 0], [0, 400], [0, -400], [30, 0], [-30, 0]]) {
-      const h = this._rawTileHeight(x, z);
-      if (h !== null) hits.push(h);
+    // Sample in runway-local coordinates, then transform into the tiles' world coordinates.
+    // The tile world is rotated to match the airport heading, so sampling raw world X/Z
+    // can accidentally hit buildings or off-runway terrain instead of the runway corridor.
+    const samples = [[0, 0], [0, 120], [0, -120], [0, 300], [0, -300], [18, 0], [-18, 0]];
+    for (const [x, z] of samples) {
+      const p = this.worldRoot.localToWorld(new THREE.Vector3(x, 0, z));
+      const h = this._rawTileHeight(p.x, p.z);
+      if (h !== null && Number.isFinite(h)) hits.push(h);
     }
     if (!hits.length) return false;
     hits.sort((a, b) => a - b);
