@@ -49,6 +49,13 @@
   .keys { display:grid; grid-template-columns:auto 1fr; gap:4px 14px; font-size:12.5px; } .keys b { color:var(--acc); font-weight:700; white-space:nowrap; }
   .apt { display:flex; justify-content:space-between; gap:10px; } .apt span { color:var(--dim); font-size:12px; }
 
+  .cat { display:flex; gap:6px; margin:2px 0 4px; }
+  .cat button { flex:1; padding:9px 8px; border-radius:10px; border:1px solid var(--line); background:rgba(255,255,255,.05); color:var(--dim); font:inherit; font-weight:800; letter-spacing:.04em; cursor:pointer; }
+  .cat button.on { background:linear-gradient(180deg,#ff7a4a,#e0442a); color:#fff; border-color:#ff7a4a; }
+  .cat button[data-cat=airline].on { background:linear-gradient(180deg,#4cc2ff,#2a8fd6); border-color:#4cc2ff; color:#04121c; }
+  .cinebar { position:fixed; left:0; right:0; height:11vh; background:#000; z-index:7; pointer-events:none; }
+  #cineTop { top:0; } #cineBot { bottom:0; }
+
   /* ---------- overlays ---------- */
   .overlay { position:fixed; inset:0; display:flex; align-items:center; justify-content:center; background:rgba(4,8,14,.62); backdrop-filter:blur(4px); z-index:20; }
   .modal { background:rgba(10,18,28,.95); border:1px solid var(--line); border-radius:16px; padding:22px 26px; min-width:min(420px, 92vw); max-width:92vw; text-align:center; max-height:92vh; overflow:auto; }
@@ -76,6 +83,7 @@
   #bFlare { right:calc(max(14px, env(safe-area-inset-right)) + 164px); bottom:calc(12% + 70px); background:rgba(255,190,60,.15); }
   #bGear { left:14px; top:34%; width:52px; height:52px; } #bFlaps { left:14px; top:calc(34% + 58px); width:52px; height:52px; } #bBrake { left:14px; top:calc(34% + 116px); width:52px; height:52px; }
   #bCam { right:14px; top:44%; width:48px; height:48px; font-size:10px; } #bMenu { right:14px; top:calc(44% + 54px); width:48px; height:48px; }
+  #bCine { left:76px; top:34%; width:52px; height:52px; font-size:20px; } #bAuto { left:76px; top:calc(34% + 58px); width:52px; height:52px; font-size:11px; background:rgba(76,194,255,.3); border-color:rgba(76,194,255,.8); }
   @media (max-height: 520px) { .tb { width:52px; height:52px; } #bFire { width:70px; height:70px; } .brand h1 { font-size:18px; } }
   @media (max-width: 760px) { #lobby .side { width:100vw; background:rgba(6,10,16,.84); } .fly { bottom:12px; right:12px; } .fly button { padding:13px 26px; font-size:17px; } }
 </style>
@@ -85,10 +93,12 @@
 <canvas id="hud"></canvas>
 <div id="whiteout"></div>
 <div id="credit"></div>
+<div id="cineBars" class="hidden"><div class="cinebar" id="cineTop"></div><div class="cinebar" id="cineBot"></div></div>
 
 <div id="lobby" class="hidden">
   <div class="side">
-    <div class="brand"><h1>DOG<b>FIGHT</b> WAR</h1><small>real-world jet combat</small></div>
+    <div class="brand"><h1>DOG<b>FIGHT</b> WAR</h1><small id="brandSub">real-world jet combat</small></div>
+    <div class="cat" id="cat"><button data-cat="war">⚔ WAR · fighter jets</button><button data-cat="airline">✈ AIRLINE · passengers</button></div>
     <div class="tabs" id="tabs"></div>
     <div class="pane" id="pane"></div>
   </div>
@@ -102,6 +112,7 @@
   <div class="tb" id="bFire">FIRE</div><div class="tb" id="bMsl">MSL</div><div class="tb" id="bFlare">FLR</div>
   <div class="tb" id="bGear">GEAR</div><div class="tb" id="bFlaps">FLAP</div><div class="tb" id="bBrake">BRK</div>
   <div class="tb" id="bCam">CAM</div><div class="tb" id="bMenu">❚❚</div>
+  <div class="tb" id="bCine">🎬</div><div class="tb" id="bAuto">✈ AP</div>
 </div>
 
 <div id="loading" class="overlay hidden"><div class="modal"><h2 id="loadTitle">Loading</h2><div class="note" id="loadNote">Streaming 3D map tiles…</div><div class="loadbar"><i id="loadBar"></i></div><div class="note" id="loadSub"></div></div></div>

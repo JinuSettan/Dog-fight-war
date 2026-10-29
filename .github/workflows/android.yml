@@ -25,6 +25,7 @@ jobs:
         env:
           # Repo -> Settings -> Secrets and variables -> Actions -> New secret: GOOGLE_MAPS_API_KEY
           VITE_GOOGLE_MAPS_API_KEY: ${{ secrets.GOOGLE_MAPS_API_KEY }}
+          VITE_CESIUM_ION_TOKEN: ${{ secrets.CESIUM_ION_TOKEN }}
         run: |
           npm install
           npm test

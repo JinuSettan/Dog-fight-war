@@ -4,8 +4,12 @@ const isTouch = typeof window !== 'undefined' && ('ontouchstart' in window || na
 
 export const defaults = {
   apiKey: (import.meta.env && import.meta.env.VITE_GOOGLE_MAPS_API_KEY) || '',
+  ionToken: (import.meta.env && import.meta.env.VITE_CESIUM_ION_TOKEN) || '',
+  category: 'war',           // war | airline
   aircraft: 'f15e',
-  airport: 'VOCI',
+  warAircraft: 'f15e',
+  airport: 'VOCI',           // departure airport (also the war-mode airport)
+  dest: 'OMDB',              // airliner destination
   time: 'noon',
   mode: 'dogfight',          // dogfight | free
   start: 'runway',           // runway | air | final
@@ -18,6 +22,11 @@ export const defaults = {
   assist: true,
   sound: true,
   fov: 68,
+  tilt: false,               // steer by tilting the phone
+  tiltRange: 28,             // degrees of tilt = full stick
+  stickSens: 1.0,
+  pax: 96,
+  scenery: 'auto',           // auto | on | off  (3D airport buildings)
   tune: {},                  // per airport {along, across, heading, ground}
 };
 
@@ -26,7 +35,9 @@ export function loadSettings() {
   try { s = JSON.parse(localStorage.getItem(KEY) || '{}'); } catch (e) { /* ignore */ }
   const out = { ...defaults, ...s };
   if (!out.apiKey) out.apiKey = defaults.apiKey;
+  if (!out.ionToken) out.ionToken = defaults.ionToken;
   out.tune = { ...(s.tune || {}) };
+  if (out.category === 'war' && out.aircraft === 'a318') out.aircraft = out.warAircraft || 'f15e';
   return out;
 }
 export function saveSettings(s) {

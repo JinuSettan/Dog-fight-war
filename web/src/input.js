@@ -12,6 +12,8 @@ export class Input {
     this.orbit = { yaw: 0, pitch: 0, dist: 1, drag: false };
     this.touch = { stickId: null, sx: 0, sy: 0, ax: 0, ay: 0, thrId: null, thr: null };
     this.pad = null; this.padPrev = [];
+    this.lookEnabled = false;                           // touch drag looks around (cabin view)
+    this.tiltS = { got: false, roll: 0, pitch: 0, p0: null, phi: 0 };
     this.enabled = false;
     this._bind();
   }
@@ -26,7 +28,7 @@ export class Input {
       if (down) {
         if (this.keys.has(k)) return;
         this.keys.add(k);
-        const map = { KeyG: 'gear', KeyF: 'flaps', KeyM: 'missile', Enter: 'missile', KeyX: 'flare', KeyC: 'camera', KeyT: 'targetcam', KeyP: 'pause', Escape: 'pause', KeyH: 'hud', KeyR: 'restart', KeyV: 'airbrake', KeyN: 'nextTarget', KeyJ: 'autolevel' };
+        const map = { KeyG: 'gear', KeyF: 'flaps', KeyM: 'missile', Enter: 'missile', KeyX: 'flare', KeyC: 'camera', KeyT: 'targetcam', KeyP: 'pause', Escape: 'pause', KeyH: 'hud', KeyR: 'restart', KeyV: 'airbrake', KeyN: 'nextTarget', KeyJ: 'autolevel', KeyL: 'cine', KeyU: 'cruise', KeyY: 'calibrate' };
         if (map[k]) this.act(map[k]);
       } else this.keys.delete(k);
     };
@@ -37,9 +39,9 @@ export class Input {
     const hud = document.getElementById('hud');
     const target = hud || cv;
     let last = null;
-    target.addEventListener('pointerdown', (e) => { if (e.pointerType === 'mouse') { this.orbit.drag = true; last = [e.clientX, e.clientY]; target.setPointerCapture?.(e.pointerId); } });
+    target.addEventListener('pointerdown', (e) => { if (e.pointerType === 'mouse' || this.lookEnabled) { this.orbit.drag = true; last = [e.clientX, e.clientY]; target.setPointerCapture?.(e.pointerId); } });
     target.addEventListener('pointermove', (e) => {
-      if (!this.orbit.drag || e.pointerType !== 'mouse') return;
+      if (!this.orbit.drag || (e.pointerType !== 'mouse' && !this.lookEnabled)) return;
       this.orbit.yaw -= (e.clientX - last[0]) * 0.006;
       this.orbit.pitch = clamp(this.orbit.pitch + (e.clientY - last[1]) * 0.005, -1.2, 1.2);
       last = [e.clientX, e.clientY];
@@ -48,7 +50,24 @@ export class Input {
     target.addEventListener('pointerup', up); target.addEventListener('pointercancel', up);
     target.addEventListener('wheel', (e) => { this.orbit.dist = clamp(this.orbit.dist * (1 + Math.sign(e.deltaY) * 0.08), 0.5, 3); e.preventDefault(); }, { passive: false });
     this._bindTouch();
+    this._bindTilt();
   }
+
+  /** phone tilt steering: roll = rotate the phone like a steering wheel, pitch = tilt the top edge to / from you */
+  _bindTilt() {
+    const T = this.tiltS;
+    addEventListener('devicemotion', (e) => {
+      const a = e.accelerationIncludingGravity; if (!a || a.x == null || a.y == null || a.z == null) return;
+      const ang = ((((screen.orientation && screen.orientation.angle) || window.orientation || 0) % 360) + 360) % 360;
+      let sx, sy;
+      if (ang === 90) { sx = -a.y; sy = a.x; } else if (ang === 270) { sx = a.y; sy = -a.x; } else if (ang === 180) { sx = -a.x; sy = -a.y; } else { sx = a.x; sy = a.y; }
+      const roll = Math.atan2(-sx, sy) * 57.2958;
+      const phi = Math.atan2(a.z, Math.hypot(sx, sy)) * 57.2958;
+      T.roll += (roll - T.roll) * 0.35; T.phi += (phi - T.phi) * 0.35; T.got = true;
+      if (T.p0 === null) T.p0 = T.phi;
+    });
+  }
+  calibrate() { if (this.tiltS.got) this.tiltS.p0 = this.tiltS.phi; }
 
   _bindTouch() {
     const zone = document.getElementById('stickZone'); if (!zone) return;
@@ -93,6 +112,8 @@ export class Input {
     bind('bFlaps', (d) => d && this.act('flaps'));
     bind('bCam', (d) => d && this.act('camera'));
     bind('bMenu', (d) => d && this.act('pause'));
+    bind('bCine', (d) => d && this.act('cine'));
+    bind('bAuto', (d) => d && this.act('cruise'));
   }
 
   _pad() {
@@ -119,10 +140,19 @@ export class Input {
 
     // touch stick
     const T = this.touch;
+    const sens = this.s.stickSens || 1;
     if (T.stickId !== null) {
-      tr = clamp(tr + T.ax * 1.2, -1, 1);
+      tr = clamp(tr + T.ax * 1.2 * sens, -1, 1);
       const py = T.ay * (this.s.invertPitch ? -1 : 1);
-      tp = clamp(tp + py * 1.2, -1, 1);
+      tp = clamp(tp + py * 1.2 * sens, -1, 1);
+    }
+    // tilt steering
+    const TS = this.tiltS;
+    if (this.s.tilt && TS.got && TS.p0 !== null) {
+      const range = this.s.tiltRange || 28;
+      const dz = (v) => (Math.abs(v) < 0.06 ? 0 : v);
+      tr = clamp(tr + dz(TS.roll / range), -1, 1);
+      tp = clamp(tp + dz((TS.p0 - TS.phi) / range) * (this.s.invertPitch ? -1 : 1), -1, 1);
     }
     // gamepad
     const p = this._pad();
@@ -146,7 +176,7 @@ export class Input {
     this.yaw = ramp(this.yaw, ty, 3.0, 5.0);
     this.fire = fire; this.brake = brake;
     // orbit returns to centre when released
-    if (!this.orbit.drag) { this.orbit.yaw *= Math.exp(-dt * 2.2); this.orbit.pitch *= Math.exp(-dt * 2.2); }
+    if (!this.orbit.drag && !this.lookEnabled) { this.orbit.yaw *= Math.exp(-dt * 2.2); this.orbit.pitch *= Math.exp(-dt * 2.2); }
     const fill = document.getElementById('thrFill'); if (fill) fill.style.height = (this.throttle * 100) + '%';
   }
 }

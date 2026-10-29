@@ -1,5 +1,6 @@
 // 2D canvas HUD drawn over the WebGL canvas: ladder, FPM, tapes, radar, target boxes, warnings, ILS.
 import * as THREE from 'three';
+import { fmtDuration } from './route.js';
 
 const GREEN = '#7dffa0', AMBER = '#ffc04a', RED = '#ff5a4a', CYAN = '#7fe8ff';
 const DEG = Math.PI / 180;
@@ -54,6 +55,7 @@ export class Hud {
       g.fillStyle = gr; g.fillRect(0, 0, W, H);
     }
     if (!S.model || !this.visible) { this._messages(S, blinkOn); return; }
+    if (S.cruise || S.cabinView) { this._flightInfo(S, blinkOn); this._messages(S, blinkOn); return; }
     const m = S.model, T = m.tele, cam = S.camera, fs = this.fs;
     g.lineWidth = Math.max(1.2, fs / 9); g.font = `${fs}px ui-monospace, Menlo, Consolas, monospace`;
     g.shadowColor = 'rgba(0,255,120,0.55)'; g.shadowBlur = 4;
@@ -257,7 +259,11 @@ export class Hud {
     // ---- top-right: score panel ----
     g.textAlign = 'right'; g.fillStyle = GREEN; g.strokeStyle = GREEN;
     let y = fs * 1.6;
-    if (S.mode === 'dogfight') { g.fillText(`WAVE ${combat.wave}   KILLS ${combat.kills}`, rx2, y); y += fs * 1.5; }
+    if (S.airline) {
+      g.fillText(`${S.airline.from} > ${S.airline.to}   ${Math.round(S.airline.km)} km`, rx2, y); y += fs * 1.5;
+      g.fillStyle = S.airline.comfort < 60 ? RED : S.airline.comfort < 80 ? AMBER : GREEN;
+      g.fillText(`PAX ${S.airline.pax}  COMFORT ${Math.round(S.airline.comfort)}%`, rx2, y); y += fs * 1.5; g.fillStyle = GREEN;
+    } else if (S.mode === 'dogfight') { g.fillText(`WAVE ${combat.wave}   KILLS ${combat.kills}`, rx2, y); y += fs * 1.5; }
     g.fillText(`SCORE ${S.score}`, rx2, y); y += fs * 1.5;
     // health bar
     const hw = fs * 9; g.strokeRect(rx2 - hw, y - fs * 0.4, hw, fs * 0.8);
@@ -280,7 +286,40 @@ export class Hud {
     g.shadowBlur = 8; g.textAlign = 'center'; g.font = `bold ${fs * 1.7}px ui-monospace, monospace`;
     W2.forEach(([t, c], i) => { if (blinkOn || c === AMBER) { g.fillStyle = c; g.shadowColor = c; g.fillText(t, W / 2, H * 0.30 + i * fs * 2.2); } });
     g.font = `${fs}px ui-monospace, monospace`;
+    if (S.airline && S.airline.canCruise && blinkOn) {
+      g.fillStyle = CYAN; g.shadowColor = CYAN; g.textAlign = 'center'; g.font = `bold ${fs * 1.2}px ui-monospace, monospace`;
+      g.fillText(`AUTOPILOT  [U]  ->  cruise to ${S.airline.to}`, W / 2, H * 0.22);
+    }
     this._messages(S, blinkOn);
+  }
+
+  /** cabin / cruise overlay: route card with progress, altitude, speed, ETA */
+  _flightInfo(S, blinkOn) {
+    const g = this.g, W = this.W, H = this.H, fs = this.fs, A = S.airline; if (!A) return;
+    g.save(); g.shadowBlur = 0;
+    const pw = Math.min(W * 0.92, fs * 30), x = (W - pw) / 2, y = Math.max(10, fs * 0.8);
+    const ph = fs * (A.cruising ? 6.4 : 3.4);
+    g.fillStyle = 'rgba(8,14,22,0.66)'; g.strokeStyle = 'rgba(140,200,255,0.35)'; g.lineWidth = 1;
+    g.beginPath(); g.roundRect(x, y, pw, ph, 10); g.fill(); g.stroke();
+    g.fillStyle = '#e8f2ff'; g.textAlign = 'left'; g.textBaseline = 'middle';
+    g.font = `800 ${fs * 1.35}px system-ui, sans-serif`;
+    g.fillText(`${A.from}  ✈  ${A.to}`, x + fs, y + fs * 1.1);
+    g.textAlign = 'right'; g.font = `600 ${fs * 0.95}px system-ui, sans-serif`; g.fillStyle = '#9fd0ff';
+    g.fillText(`${A.fromCity} to ${A.toCity}`, x + pw - fs, y + fs * 1.1);
+    g.textAlign = 'left'; g.fillStyle = '#cfe6ff'; g.font = `${fs * 0.95}px ui-monospace, monospace`;
+    g.fillText(`FL${String(Math.round(A.altM * 3.28084 / 100)).padStart(3, '0')}   ${Math.round(A.speedKmh)} km/h   PAX ${A.pax}`, x + fs, y + fs * 2.6);
+    if (A.cruising) {
+      const by = y + fs * 4.1, bw = pw - fs * 2;
+      g.fillStyle = 'rgba(255,255,255,0.14)'; g.fillRect(x + fs, by, bw, fs * 0.5);
+      g.fillStyle = '#4cc2ff'; g.fillRect(x + fs, by, bw * Math.max(0, Math.min(1, A.progress)), fs * 0.5);
+      g.fillStyle = '#ffffff'; g.beginPath(); g.arc(x + fs + bw * Math.max(0, Math.min(1, A.progress)), by + fs * 0.25, fs * 0.45, 0, 7); g.fill();
+      g.fillStyle = '#cfe6ff'; g.textAlign = 'left';
+      g.fillText(`${Math.round(A.remainingKm)} km to go · ETA ${fmtDuration(A.etaMin)}`, x + fs, y + fs * 5.4);
+      g.textAlign = 'right'; g.fillStyle = '#ffd04a';
+      g.fillText(`×${Math.round(A.warp)} · [U] skip`, x + pw - fs, y + fs * 2.6);
+    }
+    g.restore();
+    g.textBaseline = 'middle';
   }
 
   _messages(S, blinkOn) {

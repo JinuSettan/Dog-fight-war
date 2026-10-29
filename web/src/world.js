@@ -3,9 +3,10 @@ import * as THREE from 'three';
 import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
 import { DRACOLoader } from 'three/addons/loaders/DRACOLoader.js';
 import { TilesRenderer } from '3d-tiles-renderer';
-import { GoogleCloudAuthPlugin, GLTFExtensionsPlugin, ReorientationPlugin, TilesFadePlugin } from '3d-tiles-renderer/plugins';
+import { GoogleCloudAuthPlugin, CesiumIonAuthPlugin, GLTFExtensionsPlugin, ReorientationPlugin, TilesFadePlugin } from '3d-tiles-renderer/plugins';
 import { CloudField } from './particles.js';
 import { createRunway } from './models.js';
+import { buildAirportScenery } from './scenery.js';
 import { TIMES, TILE_QUALITY, RESOLUTIONS } from './config.js';
 import { smoothstep } from './math.js';
 
@@ -193,10 +194,12 @@ export class World {
       this.tiles = null;
     }
     const key = (this.s.apiKey || '').trim();
-    if (!key) { this.tilesStatus = 'off'; this.terrain.visible = true; return; }
+    const ion = (this.s.ionToken || '').trim();
+    if (!key && !ion) { this.tilesStatus = 'off'; this.terrain.visible = true; this.tilesSource = ''; return; }
     try {
       const tiles = new TilesRenderer();
-      tiles.registerPlugin(new GoogleCloudAuthPlugin({ apiToken: key, autoRefreshToken: true }));
+      if (key) { tiles.registerPlugin(new GoogleCloudAuthPlugin({ apiToken: key, autoRefreshToken: true })); this.tilesSource = 'google'; }
+      else { tiles.registerPlugin(new CesiumIonAuthPlugin({ apiToken: ion, assetId: '2275207', autoRefreshToken: true })); this.tilesSource = 'ion'; }
       const draco = new DRACOLoader();
       draco.setDecoderPath((import.meta.env?.BASE_URL ?? './') + 'draco/');
       tiles.registerPlugin(new GLTFExtensionsPlugin({ dracoLoader: draco }));
@@ -213,7 +216,7 @@ export class World {
         if ('maxSize' in lru) lru.maxSize = 1400;
         if ('maxBytesSize' in lru) lru.maxBytesSize = (this.s.tileQuality === 'low' ? 350 : 700) * 1024 * 1024;
       }
-      tiles.addEventListener('load-root-tileset', () => { if (this.tilesStatus !== 'ok') this.tilesStatus = 'ok'; this.terrain.visible = false; this.groundCalibrated = false; });
+      tiles.addEventListener('load-root-tileset', () => { if (this.tilesStatus !== 'ok') this.tilesStatus = 'ok'; this.terrain.visible = !!this.cruise; this.groundCalibrated = false; this.updateSceneryVisibility(); });
       tiles.addEventListener('load-error', (e) => {
         const msg = String(e?.error?.message || e?.error || 'tile load error');
         if (this.tilesStatus === 'loading' || !tiles.root) {
@@ -243,12 +246,39 @@ export class World {
     this.airport = ap;
     this.tune = { along: 0, across: 0, heading: 0, ground: 0, ...tune };
     if (!this.runway || Math.abs((this.runwayLen || 0) - ap.len) > 1) await this.setAirportRunway(ap.len);
+    await this.buildScenery(ap);
     if (this.reorient && this.tiles) {
       this.reorient.transformLatLonHeightToOrigin(ap.lat * DEG, ap.lon * DEG, 0);
       this.reorient.lat = ap.lat * DEG; this.reorient.lon = ap.lon * DEG;
     }
     this.groundCalibrated = false;
     this.applyRoot();
+  }
+
+  async buildScenery(ap) {
+    const token = (this._sceneryToken = (this._sceneryToken || 0) + 1);
+    if (this.scenery) { this.runwayHolder.remove(this.scenery.root); this.scenery = null; }
+    const W = (this.runway && this.runway.userData.width) || 45;
+    const sc = await buildAirportScenery(ap, this.runwayLen || ap.len, W, RUNWAY_Y, { parked: this.s.sceneryJets ?? 5 });
+    if (token !== this._sceneryToken) return;      // a newer airport was requested meanwhile
+    this.scenery = sc; this.runwayHolder.add(sc.root);
+    this.updateSceneryVisibility();
+  }
+
+  /** 3D buildings: always in 'on', never in 'off', and only without real map buildings in 'auto' */
+  updateSceneryVisibility() {
+    if (!this.scenery) return;
+    const mode = this.s.scenery || 'auto';
+    const real = this.tilesStatus === 'ok' && !this.cruise;
+    this.scenery.buildings.visible = mode === 'on' || (mode === 'auto' && !real);
+  }
+
+  /** At cruise altitude the map tiles are not needed: hide + pause them and show the stylised terrain */
+  setCruise(on) {
+    this.cruise = !!on;
+    if (this.tiles) this.tiles.group.visible = !on;
+    this.terrain.visible = on || this.tilesStatus !== 'ok';
+    this.updateSceneryVisibility();
   }
 
   setTune(tune) { this.tune = { ...this.tune, ...tune }; this.applyRoot(); }
@@ -292,7 +322,7 @@ export class World {
     // flat virtual runway zone
     const halfL = (this.runwayLen || 3000) / 2 + 350;
     if (Math.abs(x) < 110 && Math.abs(z) < halfL) return RUNWAY_Y;
-    if (this.tiles && this.tilesStatus === 'ok') {
+    if (this.tiles && this.tilesStatus === 'ok' && !this.cruise) {
       if (!this.groundCalibrated) return 0;
       const h = this._rawTileHeight(x, z);
       return h === null ? prev : h;
@@ -334,6 +364,7 @@ export class World {
     if (this.tiles) this.tiles.errorTarget = (TILE_QUALITY.find((q) => q.id === s.tileQuality) || TILE_QUALITY[1]).sse;
     this.setTime(s.time);
     this.applyResolution();
+    this.updateSceneryVisibility();
   }
 
   applyResolution() {
@@ -376,7 +407,7 @@ export class World {
     this.sky.position.copy(cam.position);
     this.sun.target.position.copy(focusPos);
     this.sun.position.copy(focusPos).addScaledVector(this.sunDir, 3000);
-    if (this.tiles) {
+    if (this.tiles && !this.cruise) {
       this.tiles.setCamera(cam);
       this.tiles.setResolutionFromRenderer(cam, this.renderer);
       cam.updateMatrixWorld();

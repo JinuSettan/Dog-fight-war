@@ -17,7 +17,7 @@ export const AIRCRAFT = {
     wingArea: 56.5, span: 13.05, chord: 4.5, cL0: 0.05, cLMax: 1.75, stallDeg: 22,
     cD0: 0.022, kInd: 0.075, rotateKt: 145, approachKt: 150, sinkLimitFpm: 1100,
     pitchRate: 1.4, rollRate: 3.4, yawRate: 0.5, ctrlTau: 0.25, maxG: 9, minG: -3,
-    weapons: true, color: '#7fb0ff',
+    weapons: true, color: '#7fb0ff', cat: 'war',
   },
   mig29: {
     id: 'mig29',
@@ -29,7 +29,7 @@ export const AIRCRAFT = {
     wingArea: 38.0, span: 11.36, chord: 3.8, cL0: 0.06, cLMax: 1.8, stallDeg: 24,
     cD0: 0.021, kInd: 0.075, rotateKt: 135, approachKt: 145, sinkLimitFpm: 1100,
     pitchRate: 1.6, rollRate: 4.2, yawRate: 0.6, ctrlTau: 0.2, maxG: 9, minG: -3,
-    weapons: true, color: '#ff8a5c',
+    weapons: true, color: '#ff8a5c', cat: 'war',
   },
   mig35: {
     id: 'mig35',
@@ -41,7 +41,7 @@ export const AIRCRAFT = {
     wingArea: 38.0, span: 12.0, chord: 3.8, cL0: 0.06, cLMax: 1.85, stallDeg: 24,
     cD0: 0.020, kInd: 0.07, rotateKt: 135, approachKt: 145, sinkLimitFpm: 1100,
     pitchRate: 1.7, rollRate: 4.5, yawRate: 0.6, ctrlTau: 0.18, maxG: 9, minG: -3,
-    weapons: true, color: '#ffd45c',
+    weapons: true, color: '#ffd45c', cat: 'war',
   },
   eagle: {
     id: 'eagle',
@@ -53,23 +53,25 @@ export const AIRCRAFT = {
     wingArea: 56.5, span: 13.05, chord: 4.5, cL0: 0.05, cLMax: 1.75, stallDeg: 22,
     cD0: 0.021, kInd: 0.072, rotateKt: 135, approachKt: 145, sinkLimitFpm: 1100,
     pitchRate: 1.5, rollRate: 3.6, yawRate: 0.5, ctrlTau: 0.22, maxG: 9, minG: -3,
-    weapons: true, color: '#9be37a',
+    weapons: true, color: '#9be37a', cat: 'war',
   },
   a318: {
     id: 'a318',
-    name: 'Airbus A318 (airliner)',
-    blurb: 'No weapons. Heavy and smooth: practise take-off and landing.',
+    name: 'Airbus A318',
+    blurb: 'Passenger jet, 112 seats. Smooth take-off, long-haul cruise and a gentle landing.',
     model: 'models/a318.glb', noseAxis: '+z', lengthM: 31.45, gearHeight: 3.9,
     nose: -9.0, main: 1.5, track: 8.9,
     massKg: 52000, fuelKg: 9000, thrustMil: 210000, thrustAB: 210000, hasAB: false,
     wingArea: 122.6, span: 34.1, chord: 4.3, cL0: 0.2, cLMax: 1.7, stallDeg: 15,
     cD0: 0.026, kInd: 0.045, rotateKt: 140, approachKt: 135, sinkLimitFpm: 700,
     pitchRate: 0.22, rollRate: 0.7, yawRate: 0.18, ctrlTau: 1.1, maxG: 2.5, minG: -1,
-    weapons: false, color: '#ffffff', flapsLift: 0.7,
+    weapons: false, color: '#ffffff', flapsLift: 0.7, cat: 'airline', seats: 112, cruiseKmh: 830, cruiseAltM: 10670,
   },
 };
 
 export const AIRCRAFT_LIST = ['f15e', 'mig29', 'mig35', 'eagle', 'a318'];
+export const WAR_LIST = ['f15e', 'mig29', 'mig35', 'eagle'];
+export const AIRLINE_LIST = ['a318'];
 export const ENEMY_TYPES = ['mig29', 'mig35'];
 
 // Airports (reference point lat/lon, field elevation, runway true heading, runway length).
@@ -93,6 +95,12 @@ export const AIRPORTS = [
   { icao: 'WSSS', iata: 'SIN', name: 'Singapore Changi', city: 'Singapore', country: 'Singapore', lat: 1.3644, lon: 103.9915, elev: 7, hdg: 20, len: 4000 },
   { icao: 'YSSY', iata: 'SYD', name: 'Sydney Kingsford Smith', city: 'Sydney', country: 'Australia', lat: -33.9399, lon: 151.1753, elev: 6, hdg: 160, len: 3962 },
   { icao: 'LFPG', iata: 'CDG', name: 'Paris Charles de Gaulle', city: 'Paris', country: 'France', lat: 49.0097, lon: 2.5479, elev: 119, hdg: 85, len: 4215 },
+  { icao: 'VOHS', iata: 'HYD', name: 'Rajiv Gandhi International', city: 'Hyderabad', country: 'India', lat: 17.2403, lon: 78.4294, elev: 617, hdg: 90, len: 4260 },
+  { icao: 'OTHH', iata: 'DOH', name: 'Hamad International', city: 'Doha', country: 'Qatar', lat: 25.2731, lon: 51.6081, elev: 4, hdg: 160, len: 4850 },
+  { icao: 'OMAA', iata: 'AUH', name: 'Zayed International', city: 'Abu Dhabi', country: 'UAE', lat: 24.4330, lon: 54.6511, elev: 27, hdg: 130, len: 4100 },
+  { icao: 'EDDF', iata: 'FRA', name: 'Frankfurt Airport', city: 'Frankfurt', country: 'Germany', lat: 50.0379, lon: 8.5622, elev: 111, hdg: 70, len: 4000 },
+  { icao: 'EHAM', iata: 'AMS', name: 'Amsterdam Schiphol', city: 'Amsterdam', country: 'Netherlands', lat: 52.3105, lon: 4.7683, elev: -3, hdg: 184, len: 3800 },
+  { icao: 'KATL', iata: 'ATL', name: 'Hartsfield-Jackson Atlanta', city: 'Atlanta', country: 'USA', lat: 33.6407, lon: -84.4277, elev: 313, hdg: 90, len: 3048 },
 ];
 
 export const DIFFICULTY = {
