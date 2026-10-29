@@ -212,9 +212,21 @@ export class World {
       tiles.errorTarget = (TILE_QUALITY.find((q) => q.id === this.s.tileQuality) || TILE_QUALITY[1]).sse;
       const lru = tiles.lruCache;
       if (lru) {
-        if ('minSize' in lru) lru.minSize = 500;
-        if ('maxSize' in lru) lru.maxSize = 1400;
-        if ('maxBytesSize' in lru) lru.maxBytesSize = (this.s.tileQuality === 'low' ? 350 : 700) * 1024 * 1024;
+        // The renderer's LRU cache evicts unused tiles as the camera moves.
+        // Keep mobile budgets conservative; the browser/device can have much less
+        // memory available than the nominal physical RAM.
+        const touchDevice = typeof navigator !== 'undefined' &&
+          ('ontouchstart' in globalThis || (navigator.maxTouchPoints || 0) > 0);
+        const deviceRam = typeof navigator !== 'undefined' && Number.isFinite(navigator.deviceMemory)
+          ? navigator.deviceMemory : 4;
+        const quality = this.s.tileQuality || 'med';
+        const byteBudgetMB = quality === 'low' ? 128
+          : quality === 'med' ? 256
+          : quality === 'high' ? 384 : 512;
+        const budgetMB = Math.min(byteBudgetMB, touchDevice ? 192 : deviceRam <= 4 ? 256 : byteBudgetMB);
+        if ('minSize' in lru) lru.minSize = touchDevice ? 80 : 150;
+        if ('maxSize' in lru) lru.maxSize = touchDevice ? 450 : 900;
+        if ('maxBytesSize' in lru) lru.maxBytesSize = budgetMB * 1024 * 1024;
       }
       tiles.addEventListener('load-root-tileset', () => { if (this.tilesStatus !== 'ok') this.tilesStatus = 'ok'; this.terrain.visible = !!this.cruise; this.groundCalibrated = false; this.updateSceneryVisibility(); });
       tiles.addEventListener('load-error', (e) => {
@@ -380,7 +392,7 @@ export class World {
     else pr = res.h / h;
     pr = Math.max(0.35, Math.min(pr, 3.5));
     // cap total pixels (WebGL limits / memory)
-    const maxPixels = 3840 * 2160 * 1.05;
+    const maxPixels = 3840 * 2160;
     if (w * h * pr * pr > maxPixels) pr = Math.sqrt(maxPixels / (w * h));
     this._pr = pr;
     this.renderer.setPixelRatio(pr);
@@ -401,7 +413,7 @@ export class World {
     this._adaptT = 0;
     let pr = this.pixelRatioAuto;
     if (this.fpsAvg < 42) pr *= 0.88; else if (this.fpsAvg > 58) pr *= 1.07;
-    const maxPr = Math.min(1080 / window.innerHeight, 1.25);
+    const maxPr = Math.min(1440 / window.innerHeight, 1.5);
     pr = Math.max(0.45, Math.min(pr, Math.max(0.6, maxPr)));
     if (Math.abs(pr - this.pixelRatioAuto) > 0.02) { this.pixelRatioAuto = pr; this.applyResolution(); }
   }
