@@ -88,7 +88,8 @@ export const AIRPORTS = [
   { icao: 'VOMM', iata: 'MAA', name: 'Chennai International', city: 'Chennai', country: 'India', lat: 12.9941, lon: 80.1709, elev: 16, hdg: 70, len: 3658 },
   { icao: 'OMDB', iata: 'DXB', name: 'Dubai International', city: 'Dubai', country: 'UAE', lat: 25.2532, lon: 55.3657, elev: 19, hdg: 120, len: 4000 },
   { icao: 'EGLL', iata: 'LHR', name: 'London Heathrow', city: 'London', country: 'UK', lat: 51.4700, lon: -0.4543, elev: 25, hdg: 270, len: 3902 },
-  { icao: 'KJFK', iata: 'JFK', name: 'John F. Kennedy', city: 'New York', country: 'USA', lat: 40.6413, lon: -73.7781, elev: 4, hdg: 130, len: 4442 },
+  // Approximate midpoint of real runway 13R/31L; true runway heading 121°.
+  { icao: 'KJFK', iata: 'JFK', name: 'John F. Kennedy', city: 'New York', country: 'USA', lat: 40.63818, lon: -73.79425, elev: 4, hdg: 121, len: 4423 },
   { icao: 'KLAX', iata: 'LAX', name: 'Los Angeles International', city: 'Los Angeles', country: 'USA', lat: 33.9416, lon: -118.4085, elev: 38, hdg: 250, len: 3685 },
   { icao: 'KSFO', iata: 'SFO', name: 'San Francisco International', city: 'San Francisco', country: 'USA', lat: 37.6213, lon: -122.3790, elev: 4, hdg: 280, len: 3618 },
   { icao: 'RJTT', iata: 'HND', name: 'Tokyo Haneda', city: 'Tokyo', country: 'Japan', lat: 35.5494, lon: 139.7798, elev: 6, hdg: 160, len: 3360 },
