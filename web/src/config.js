@@ -118,6 +118,12 @@ export const AIRPORTS = [
   { icao: 'EDDF', iata: 'FRA', name: 'Frankfurt Airport', city: 'Frankfurt', country: 'Germany', lat: 50.0379, lon: 8.5622, elev: 111, hdg: 70, len: 4000 },
   { icao: 'EHAM', iata: 'AMS', name: 'Amsterdam Schiphol', city: 'Amsterdam', country: 'Netherlands', lat: 52.3105, lon: 4.7683, elev: -3, hdg: 184, len: 3800 },
   { icao: 'KATL', iata: 'ATL', name: 'Hartsfield-Jackson Atlanta', city: 'Atlanta', country: 'USA', lat: 33.6407, lon: -84.4277, elev: 313, hdg: 90, len: 3048 },
+  // California — representative runway reference points; verify exact alignment in-game.
+  { icao: 'KSAN', iata: 'SAN', name: 'San Diego International', city: 'San Diego', country: 'USA', lat: 32.7338, lon: -117.1897, elev: 5, hdg: 270, len: 2865 },
+  { icao: 'KOAK', iata: 'OAK', name: 'Oakland International', city: 'Oakland', country: 'USA', lat: 37.7126, lon: -122.2197, elev: 3, hdg: 120, len: 3200 },
+  { icao: 'KSJC', iata: 'SJC', name: 'San Jose Mineta International', city: 'San Jose', country: 'USA', lat: 37.3639, lon: -121.9290, elev: 19, hdg: 120, len: 3353 },
+  // Hong Kong — approximate runway 07L/25R reference point; verify exact alignment in-game.
+  { icao: 'VHHH', iata: 'HKG', name: 'Hong Kong International', city: 'Hong Kong', country: 'Hong Kong', lat: 22.3080, lon: 113.9150, elev: 9, hdg: 70, len: 3800 },
 ];
 
 // Difficulty presets for enemy AI
