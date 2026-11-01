@@ -1,0 +1,22 @@
+{
+ "people": [
+  {
+   "id": "man",
+   "name": "Man",
+   "hero": "man.glb",
+   "lod": "man_lod.glb"
+  },
+  {
+   "id": "women",
+   "name": "Woman",
+   "hero": "women.glb",
+   "lod": "women_lod.glb"
+  },
+  {
+   "id": "indian_man_in_kurta",
+   "name": "Man in kurta",
+   "hero": "indian_man_in_kurta.glb",
+   "lod": "indian_man_in_kurta_lod.glb"
+  }
+ ]
+}

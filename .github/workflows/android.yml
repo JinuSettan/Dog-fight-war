@@ -20,12 +20,32 @@ jobs:
         with:
           node-version: 22
 
+      - name: Process extra characters (optional)
+        run: |
+          if ls characters/*.glb >/dev/null 2>&1; then
+            pip install numpy scipy pillow
+            mkdir -p /tmp/chars_out && cp web/public/models/people/*.glb /tmp/chars_out/ 2>/dev/null || true
+            python3 tools/process_people.py characters web/public/models/people_extra
+            cp -n web/public/models/people_extra/*.glb web/public/models/people/ || true
+            python3 - <<'PY'
+          import json, os
+          d = 'web/public/models/people'
+          items = []
+          for f in sorted(os.listdir(d)):
+              if f.endswith('.glb') and not f.endswith('_lod.glb') and os.path.exists(os.path.join(d, f[:-4] + '_lod.glb')):
+                  items.append(dict(id=f[:-4], name=f[:-4].replace('_', ' ').title(), hero=f, lod=f[:-4] + '_lod.glb'))
+          json.dump(dict(people=items), open(d + '/people.json', 'w'), indent=1)
+          PY
+            rm -rf web/public/models/people_extra
+          fi
+
       - name: Build web game
         working-directory: web
         env:
           # Repo -> Settings -> Secrets and variables -> Actions -> New secret: GOOGLE_MAPS_API_KEY
           VITE_GOOGLE_MAPS_API_KEY: ${{ secrets.GOOGLE_MAPS_API_KEY }}
           VITE_CESIUM_ION_TOKEN: ${{ secrets.CESIUM_ION_TOKEN }}
+          VITE_GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
         run: |
           npm install
           npm test

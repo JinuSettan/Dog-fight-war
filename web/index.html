@@ -83,6 +83,7 @@
   #bFlare { right:calc(max(14px, env(safe-area-inset-right)) + 164px); bottom:calc(12% + 70px); background:rgba(255,190,60,.15); }
   #bGear { left:14px; top:34%; width:52px; height:52px; } #bFlaps { left:14px; top:calc(34% + 58px); width:52px; height:52px; } #bBrake { left:14px; top:calc(34% + 116px); width:52px; height:52px; }
   #bCam { right:14px; top:44%; width:48px; height:48px; font-size:10px; } #bMenu { right:14px; top:calc(44% + 54px); width:48px; height:48px; }
+  #bTalk { right:calc(max(14px, env(safe-area-inset-right)) + 176px); bottom:calc(7% + 70px); width:52px; height:52px; font-size:20px; } #subs { position:fixed; left:50%; bottom:14%; transform:translateX(-50%); max-width:86vw; padding:8px 16px; background:rgba(0,0,0,.55); color:#fff; font:600 clamp(15px,2.4vw,22px)/1.35 system-ui,sans-serif; text-align:center; border-radius:6px; text-shadow:0 1px 3px #000; opacity:0; transition:opacity .25s; pointer-events:none; z-index:6; } #subs.on { opacity:1; } #subs b { color:#ffd04a; } #talkBox { position:fixed; left:50%; top:16px; transform:translateX(-50%); display:flex; gap:6px; align-items:center; background:rgba(8,14,22,.85); padding:8px; border-radius:10px; z-index:8; width:min(92vw,520px); pointer-events:auto; } #talkBox.hidden, #talkAcc.hidden { display:none; } #talkBox input { flex:1; min-width:0; font-size:16px; padding:8px 10px; border-radius:6px; border:1px solid #567; background:#0b1620; color:#fff; } #talkBox button { padding:8px 12px; border:0; border-radius:6px; background:#e0442a; color:#fff; font-weight:700; } #talkName { color:#ffd04a; font:700 13px system-ui; white-space:nowrap; } #bWpn { right:calc(max(14px, env(safe-area-inset-right)) + 176px); bottom:7%; width:56px; height:56px; font-size:22px; } #bUse { left:76px; top:calc(34% + 116px); width:52px; height:52px; font-size:20px; } #bJump { right:calc(max(14px, env(safe-area-inset-right)) + 70px); bottom:calc(7% + 100px); width:72px; height:72px; background:rgba(76,194,255,.3); border-color:rgba(76,194,255,.8); font-size:13px; }
   #bCine { left:76px; top:34%; width:52px; height:52px; font-size:20px; } #bAuto { left:76px; top:calc(34% + 58px); width:52px; height:52px; font-size:11px; background:rgba(76,194,255,.3); border-color:rgba(76,194,255,.8); }
   @media (max-height: 520px) { .tb { width:52px; height:52px; } #bFire { width:70px; height:70px; } .brand h1 { font-size:18px; } }
   @media (max-width: 760px) { #lobby .side { width:100vw; background:rgba(6,10,16,.84); } .fly { bottom:12px; right:12px; } .fly button { padding:13px 26px; font-size:17px; } }
@@ -93,6 +94,8 @@
 <canvas id="hud"></canvas>
 <div id="whiteout"></div>
 <div id="credit"></div>
+<div id="subs"></div>
+<div id="talkBox" class="hidden"><span id="talkName"></span><input id="talkIn" type="text" autocomplete="off" maxlength="160"><button id="talkGo">Send</button><button id="talkAcc" class="hidden" style="background:#7a3">Accuse</button><button id="talkX" style="background:#456">✕</button></div>
 <div id="cineBars" class="hidden"><div class="cinebar" id="cineTop"></div><div class="cinebar" id="cineBot"></div></div>
 
 <div id="lobby" class="hidden">
@@ -112,12 +115,12 @@
   <div class="tb" id="bFire">FIRE</div><div class="tb" id="bMsl">MSL</div><div class="tb" id="bFlare">FLR</div>
   <div class="tb" id="bGear">GEAR</div><div class="tb" id="bFlaps">FLAP</div><div class="tb" id="bBrake">BRK</div>
   <div class="tb" id="bCam">CAM</div><div class="tb" id="bMenu">❚❚</div>
-  <div class="tb" id="bCine">🎬</div><div class="tb" id="bAuto">✈ AP</div>
+  <div class="tb" id="bUse">🚪</div><div class="tb hidden" id="bJump">JUMP</div><div class="tb hidden" id="bWpn">🔫</div><div class="tb hidden" id="bTalk">💬</div><div class="tb" id="bCine">🎬</div><div class="tb" id="bAuto">✈ AP</div>
 </div>
 
 <div id="loading" class="overlay hidden"><div class="modal"><h2 id="loadTitle">Loading</h2><div class="note" id="loadNote">Streaming 3D map tiles…</div><div class="loadbar"><i id="loadBar"></i></div><div class="note" id="loadSub"></div></div></div>
 <div id="pause" class="overlay hidden"><div class="modal"><h2>PAUSED</h2><div class="btns"><button class="btn pri" id="pResume">Resume</button><button class="btn" id="pRestart">Restart</button><button class="btn" id="pLobby">Lobby</button></div></div></div>
-<div id="debrief" class="overlay hidden"><div class="modal"><h2 id="dbTitle"></h2><div class="big" id="dbBig"></div><div class="note" id="dbSub"></div><div class="grid" id="dbGrid"></div><div class="btns"><button class="btn pri" id="dRetry">Fly again</button><button class="btn" id="dLobby">Lobby</button></div></div></div>
+<div id="debrief" class="overlay hidden"><div class="modal"><h2 id="dbTitle"></h2><div class="big" id="dbBig"></div><div class="note" id="dbSub"></div><div class="grid" id="dbGrid"></div><div class="btns"><button class="btn pri" id="dRetry">Fly again</button><button class="btn" id="dWalk">🚶 Walk around</button><button class="btn" id="dLobby">Lobby</button></div></div></div>
 <div id="boot"><div style="font-size:22px;letter-spacing:.2em;font-weight:800">DOG<span style="color:#ff6a4a">FIGHT</span> WAR</div><div class="note" id="bootNote">Starting…</div></div>
 
 <script type="module" src="/src/main.js"></script>

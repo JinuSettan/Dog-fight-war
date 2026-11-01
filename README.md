@@ -7,8 +7,23 @@ Two games in one:
   passengers, take off, press the autopilot (U) above 6000 ft to cruise (time-compressed), then land at the destination.
   Passenger comfort (g-forces, bank, stalls, hard landing) decides your revenue. Cabin view and window-seat view included.
 
+**On foot:** park the aircraft (speed 0), press **E** (touch: 🚪) to step out, then walk/run/jump around the airport and the city
+(WASD / stick, Shift run, Space / JUMP, mouse or finger drag to look). Walk back to the aircraft and press E to board again.
+After landing, the result screen has a **Walk around** button. The character is `web/public/models/man.glb` (CC0 scan from grab3d.com,
+decimated and auto-rigged by `tools/make_man.py`; walking is animated in code). No walls: you cannot enter buildings, only walk streets.
+
 Common: real-airport runways, 3D airport buildings (terminal, tower, apron, parked jets), real 3D city tiles (with a key),
 clouds, cinematic take-off / landing camera (button 🎬 or key L), phone touch controls and phone-tilt steering.
+
+**Open world (new):** on foot you now get
+* real tree meshes (`tree_1..3.glb`) and grass tufts placed by maths (noise forest patches, never on runway/roads/rooftops); Lobby → Graphics → *Trees & grass*,
+* an AK-47 and a pistol (F fire, Q switch weapon, R reload, touch: FIRE / 🔫), over-the-shoulder aiming with a crosshair,
+* cars: police Dodge Charger and BMW M3 Touring parked next to you and driving on roads (E = take / carjack, W/S gas-brake, A/D steer, Space handbrake, E exit),
+* AI traffic and pedestrians (run them over, or shoot them); roads = procedural street grid on demo terrain, OpenStreetMap roads (fetched online) on real 3D tiles,
+* zombie police officers (Lobby → Graphics → *Zombies*: New York airports / everywhere / off).
+* people chat (T / 💬, needs a Talk key in Lobby → Graphics): every person has a name, remembers you (shot / ran over / carjacked = they run away from you), and a random "who did it" case (M = case file, Accuse button in the chat),
+* car radio with AI-written breaking news (voice + 5 s subtitles) while driving, night mode with snow.
+Known limits: no lions or forests exist in the supplied models; on real tiles the roads come from OpenStreetMap and may be slightly offset; no interiors.
 
 ```
 web/       Vite + three.js game (physics, AI, HUD, lobby)

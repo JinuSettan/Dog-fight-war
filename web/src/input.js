@@ -28,7 +28,7 @@ export class Input {
       if (down) {
         if (this.keys.has(k)) return;
         this.keys.add(k);
-        const map = { KeyG: 'gear', KeyF: 'flaps', KeyM: 'missile', Enter: 'missile', KeyX: 'flare', KeyC: 'camera', KeyT: 'targetcam', KeyP: 'pause', Escape: 'pause', KeyH: 'hud', KeyR: 'restart', KeyV: 'airbrake', KeyN: 'nextTarget', KeyJ: 'autolevel', KeyL: 'cine', KeyU: 'cruise', KeyY: 'calibrate' };
+        const map = { KeyG: 'gear', KeyF: 'flaps', KeyM: 'missile', Enter: 'missile', KeyX: 'flare', KeyC: 'camera', KeyP: 'pause', Escape: 'pause', KeyH: 'hud', KeyR: 'restart', KeyV: 'airbrake', KeyN: 'nextTarget', KeyJ: 'autolevel', KeyL: 'cine', KeyU: 'cruise', KeyY: 'calibrate', KeyE: 'interact', Space: 'jump', KeyQ: 'weapon', KeyT: 'talk', KeyO: 'targetcam', Digit1: 'w1', Digit2: 'w2', Digit3: 'w3' };
         if (map[k]) this.act(map[k]);
       } else this.keys.delete(k);
     };
@@ -66,6 +66,18 @@ export class Input {
       T.roll += (roll - T.roll) * 0.35; T.phi += (phi - T.phi) * 0.35; T.got = true;
       if (T.p0 === null) T.p0 = T.phi;
     });
+  }
+  /** on-foot movement intent: f = forward, r = right (camera relative) */
+  walkVec() {
+    const K = this.keys, kb = (a, b) => (K.has(a) ? 1 : 0) - (K.has(b) ? 1 : 0);
+    let f = kb('KeyW', 'KeyS') + kb('ArrowUp', 'ArrowDown'), r = kb('KeyD', 'KeyA') + kb('ArrowRight', 'ArrowLeft');
+    const T = this.touch;
+    if (T.stickId !== null) { f += -T.ay * 1.2; r += T.ax * 1.2; }
+    const p = this._pad();
+    if (p) { const dz = (v) => (Math.abs(v) < 0.14 ? 0 : v); f += -dz(p.axes[1]); r += dz(p.axes[0]); }
+    const mag = Math.hypot(f, r);
+    if (mag > 1) { f /= mag; r /= mag; }
+    return { f, r, run: K.has('ShiftLeft') || K.has('ShiftRight') || mag > 0.92 && T.stickId !== null };
   }
   calibrate() { if (this.tiltS.got) this.tiltS.p0 = this.tiltS.phi; }
 
@@ -114,6 +126,10 @@ export class Input {
     bind('bMenu', (d) => d && this.act('pause'));
     bind('bCine', (d) => d && this.act('cine'));
     bind('bAuto', (d) => d && this.act('cruise'));
+    bind('bUse', (d) => d && this.act('interact'));
+    bind('bJump', (d) => { this.touchHand = d; if (d) this.act('jump'); }, true);
+    bind('bTalk', (d) => d && this.act('talk'));
+    bind('bWpn', (d) => d && this.act('weapon'));
   }
 
   _pad() {

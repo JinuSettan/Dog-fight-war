@@ -124,6 +124,30 @@ function buildSky() {
   return sky;
 }
 
+/** falling snow: a box of flakes that follows the camera and wraps around */
+class Snow {
+  constructor(scene) {
+    const N = 1800, g = new THREE.BufferGeometry(); this.p = new Float32Array(N * 3); this.N = N;
+    for (let i = 0; i < N; i++) { this.p[i * 3] = (Math.random() - 0.5) * 80; this.p[i * 3 + 1] = Math.random() * 40; this.p[i * 3 + 2] = (Math.random() - 0.5) * 80; }
+    g.setAttribute('position', new THREE.BufferAttribute(this.p, 3));
+    this.pts = new THREE.Points(g, new THREE.PointsMaterial({ color: 0xffffff, size: 0.16, transparent: true, opacity: 0.85, depthWrite: false, fog: false }));
+    this.pts.frustumCulled = false; this.pts.visible = false; scene.add(this.pts); this.t = 0;
+  }
+  update(dt, cam, on) {
+    this.pts.visible = on; if (!on) return;
+    this.t += dt; const p = this.p;
+    for (let i = 0; i < this.N; i++) {
+      const k = i * 3;
+      p[k + 1] -= (1.6 + (i % 7) * 0.25) * dt; p[k] += Math.sin(this.t * 0.8 + i) * 0.4 * dt; p[k + 2] += Math.cos(this.t * 0.6 + i * 1.3) * 0.3 * dt;
+      if (p[k + 1] < 0) p[k + 1] += 40;
+    }
+    this.pts.geometry.attributes.position.needsUpdate = true;
+    this.pts.position.set(Math.round(cam.position.x / 80) * 80 - 0, cam.position.y - 20, Math.round(cam.position.z / 80) * 80);
+    // keep the box centred on the camera by wrapping flakes relative to it
+    this.pts.position.set(cam.position.x, cam.position.y - 20, cam.position.z);
+  }
+}
+
 export class World {
   constructor(canvas, settings) {
     this.canvas = canvas;
@@ -152,6 +176,7 @@ export class World {
     this.terrain = buildTerrain();
     this.scene.add(this.terrain);
 
+    this.snow = new Snow(this.scene);
     this.clouds = new CloudField();
     this.scene.add(this.clouds.mesh);
 
@@ -212,21 +237,9 @@ export class World {
       tiles.errorTarget = (TILE_QUALITY.find((q) => q.id === this.s.tileQuality) || TILE_QUALITY[1]).sse;
       const lru = tiles.lruCache;
       if (lru) {
-        // The renderer's LRU cache evicts unused tiles as the camera moves.
-        // Keep mobile budgets conservative; the browser/device can have much less
-        // memory available than the nominal physical RAM.
-        const touchDevice = typeof navigator !== 'undefined' &&
-          ('ontouchstart' in globalThis || (navigator.maxTouchPoints || 0) > 0);
-        const deviceRam = typeof navigator !== 'undefined' && Number.isFinite(navigator.deviceMemory)
-          ? navigator.deviceMemory : 4;
-        const quality = this.s.tileQuality || 'med';
-        const byteBudgetMB = quality === 'low' ? 128
-          : quality === 'med' ? 256
-          : quality === 'high' ? 384 : 512;
-        const budgetMB = Math.min(byteBudgetMB, touchDevice ? 192 : deviceRam <= 4 ? 256 : byteBudgetMB);
-        if ('minSize' in lru) lru.minSize = touchDevice ? 80 : 150;
-        if ('maxSize' in lru) lru.maxSize = touchDevice ? 450 : 900;
-        if ('maxBytesSize' in lru) lru.maxBytesSize = budgetMB * 1024 * 1024;
+        if ('minSize' in lru) lru.minSize = 500;
+        if ('maxSize' in lru) lru.maxSize = 1400;
+        if ('maxBytesSize' in lru) lru.maxBytesSize = (this.s.tileQuality === 'low' ? 350 : 700) * 1024 * 1024;
       }
       tiles.addEventListener('load-root-tileset', () => { if (this.tilesStatus !== 'ok') this.tilesStatus = 'ok'; this.terrain.visible = !!this.cruise; this.groundCalibrated = false; this.updateSceneryVisibility(); });
       tiles.addEventListener('load-error', (e) => {
@@ -308,14 +321,9 @@ export class World {
     if (!this.tiles || !this.tiles.root) return false;
     this.worldRoot.position.y = 0; this.worldRoot.updateMatrixWorld(true);
     const hits = [];
-    // Sample in runway-local coordinates, then transform into the tiles' world coordinates.
-    // The tile world is rotated to match the airport heading, so sampling raw world X/Z
-    // can accidentally hit buildings or off-runway terrain instead of the runway corridor.
-    const samples = [[0, 0], [0, 120], [0, -120], [0, 300], [0, -300], [18, 0], [-18, 0]];
-    for (const [x, z] of samples) {
-      const p = this.worldRoot.localToWorld(new THREE.Vector3(x, 0, z));
-      const h = this._rawTileHeight(p.x, p.z);
-      if (h !== null && Number.isFinite(h)) hits.push(h);
+    for (const [x, z] of [[0, 0], [0, 400], [0, -400], [30, 0], [-30, 0]]) {
+      const h = this._rawTileHeight(x, z);
+      if (h !== null) hits.push(h);
     }
     if (!hits.length) return false;
     hits.sort((a, b) => a - b);
@@ -333,6 +341,83 @@ export class World {
     this._ray.far = 18000;
     const hits = this._ray.intersectObject(this.tiles.group, true);
     return hits.length ? 9000 - hits[0].distance : null;
+  }
+
+
+  /** scene (x,z) of a lat/lon, using the current airport as origin (flat-earth approx., fine for a few km). Needs this.airport {lat,lon,hdg} */
+  latLonToScene(lat, lon) {
+    const a = this.airport; if (!a) return null;
+    const k = 111320, e = (lon - a.lon) * k * Math.cos(a.lat * DEG), n = (lat - a.lat) * k;
+    const th = ((a.hdg || 0) + (this.tune.heading || 0)) * DEG + Math.PI;
+    const lx = -e, lz = n, c = Math.cos(th), s = Math.sin(th);
+    return { x: lx * c + lz * s - this.tune.across, z: -lx * s + lz * c + this.tune.along };
+  }
+
+  /** inverse of latLonToScene */
+  sceneToLatLon(x, z) {
+    const a = this.airport; if (!a) return null;
+    const th = ((a.hdg || 0) + (this.tune.heading || 0)) * DEG + Math.PI, c = Math.cos(th), s = Math.sin(th);
+    const dx = x + this.tune.across, dz = z - this.tune.along;
+    const lx = dx * c - dz * s, lz = dx * s + dz * c;
+    return { lat: a.lat + lz / 111320, lon: a.lon + (-lx) / (111320 * Math.cos(a.lat * DEG)) };
+  }
+
+  /** distance along a ray to the first wall / building (map or airport scenery), or null */
+  rayWall(origin, dir, far = 200) {
+    const targets = [];
+    if (this.tiles && this.tilesStatus === 'ok' && !this.cruise) targets.push(this.tiles.group);
+    if (this.scenery && this.scenery.buildings.visible) targets.push(this.scenery.buildings);
+    if (!targets.length) return null;
+    this._ray.set(origin, dir); this._ray.far = far;
+    const h = this._ray.intersectObjects(targets, true);
+    return h.length ? h[0].distance : null;
+  }
+
+  /** ground for placing vegetation: null where trees must not grow (water, runway zone, roofs, steep walls) */
+  treeGround(x, z) {
+    const halfL = (this.runwayLen || 3000) / 2 + 400;
+    if (x > -130 && x < 560 && Math.abs(z) < halfL) return null;
+    if (this.tiles && this.tilesStatus === 'ok' && !this.cruise && this.groundCalibrated) {
+      const h = this._rawTileHeight(x, z); if (h === null) return null;
+      // rooftop / wall rejection: the spot must not stand clearly above its surroundings
+      let mn = 1e9, mx = -1e9;
+      for (const [dx, dz] of [[9, 0], [-9, 0], [0, 9], [0, -9]]) {
+        const hh = this._rawTileHeight(x + dx, z + dz); if (hh === null) return null;
+        if (hh < mn) mn = hh; if (hh > mx) mx = hh;
+      }
+      if (h > mn + 2.2 || mx - mn > 4.5) return null;
+      return h;
+    }
+    if (terrainRaw(x, z) < 0.42 - 0.005 && Math.hypot(x, z) > 2600) return null;       // water
+    const h = terrainHeight(x, z);
+    return h > 1400 ? null : h;                                                          // above the tree line
+  }
+
+  /** pedestrian ground: nearest surface below (y0 + 2.5 m) so roofs / bridges overhead are ignored */
+  walkGround(x, z, y0 = 0) {
+    const halfL = (this.runwayLen || 3000) / 2 + 350;
+    if (Math.abs(x) < 110 && Math.abs(z) < halfL) return RUNWAY_Y;
+    if (this.tiles && this.tilesStatus === 'ok' && !this.cruise && this.groundCalibrated) {
+      this._org.set(x, y0 + 2.5, z); this._ray.set(this._org, this._down); this._ray.far = 60;
+      const hits = this._ray.intersectObject(this.tiles.group, true);
+      if (hits.length) return y0 + 2.5 - hits[0].distance;
+      return y0;
+    }
+    return terrainHeight(x, z);
+  }
+
+  /** true when a wall (map building or scenery) is within `dist` metres of (from) in direction (dx,dz) at knee and chest height */
+  wallAhead(px, py, pz, dx, dz, dist) {
+    const targets = [];
+    if (this.tiles && this.tilesStatus === 'ok' && !this.cruise) targets.push(this.tiles.group);
+    if (this.scenery && this.scenery.buildings.visible) targets.push(this.scenery.buildings);
+    if (!targets.length) return false;
+    this._d2 = this._d2 || new THREE.Vector3(); this._d2.set(dx, 0, dz).normalize();
+    for (const h of [0.55, 1.3]) {
+      this._org.set(px, py + h, pz); this._ray.set(this._org, this._d2); this._ray.far = dist + 0.45;
+      if (this._ray.intersectObjects(targets, true).length) return true;
+    }
+    return false;
   }
 
   groundHeight(x, z, prev = 0) {
@@ -361,7 +446,8 @@ export class World {
     this.scene.fog.color.copy(this.fogColor);
     this.sun.intensity = t.sunI * 0.62 * (this.s.brightness || 1);
     this.hemi.intensity = t.hemi * 0.5 * (this.s.brightness || 1);
-    const sunCol = t.id === 'sunset' ? new THREE.Color(1.0, 0.82, 0.7) : new THREE.Color(1, 1, 1);
+    this.scene.environmentIntensity = t.id === 'night' ? 0.12 : 0.4;
+    const sunCol = t.id === 'sunset' ? new THREE.Color(1.0, 0.82, 0.7) : t.id === 'night' ? new THREE.Color(0.55, 0.65, 1.0) : new THREE.Color(1, 1, 1);
     this.clouds.setSun(sunDir, sunCol);
     this._syncFog();
   }
@@ -392,7 +478,7 @@ export class World {
     else pr = res.h / h;
     pr = Math.max(0.35, Math.min(pr, 3.5));
     // cap total pixels (WebGL limits / memory)
-    const maxPixels = 3840 * 2160;
+    const maxPixels = 3840 * 2160 * 1.05;
     if (w * h * pr * pr > maxPixels) pr = Math.sqrt(maxPixels / (w * h));
     this._pr = pr;
     this.renderer.setPixelRatio(pr);
@@ -413,7 +499,7 @@ export class World {
     this._adaptT = 0;
     let pr = this.pixelRatioAuto;
     if (this.fpsAvg < 42) pr *= 0.88; else if (this.fpsAvg > 58) pr *= 1.07;
-    const maxPr = Math.min(1440 / window.innerHeight, 1.5);
+    const maxPr = Math.min(1080 / window.innerHeight, 1.25);
     pr = Math.max(0.45, Math.min(pr, Math.max(0.6, maxPr)));
     if (Math.abs(pr - this.pixelRatioAuto) > 0.02) { this.pixelRatioAuto = pr; this.applyResolution(); }
   }
@@ -422,6 +508,7 @@ export class World {
   update(dt, focusPos) {
     const cam = this.camera;
     this.sky.position.copy(cam.position);
+    { const wmode = this.s.weather || 'auto'; this.snow.update(dt, cam, wmode === 'snow' || (wmode === 'auto' && this.timeId === 'night')); }
     this.sun.target.position.copy(focusPos);
     this.sun.position.copy(focusPos).addScaledVector(this.sunDir, 3000);
     if (this.tiles && !this.cruise) {
