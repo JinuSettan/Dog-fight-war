@@ -18,6 +18,7 @@ import { Roads } from './roads.js';
 import { Talk } from './talk.js';
 import { Case } from './mission.js';
 import { StreetView, parseLatLon } from './streetview.js';
+import { Minimap } from './minimap.js';
 import { saveMem } from './crowd.js';
 import { flightPlan, fmtDuration } from './route.js';
 import { loadSettings, saveSettings, isTouch } from './settings.js';
@@ -569,7 +570,7 @@ function startWalking() {
   G.walkBase = G.walk.yaw; G.input.orbit.yaw = G.input.orbit.pitch = 0; G.input.orbit.dist = 1;
   G.input.lookEnabled = true; G.noEnd = true;
   if (touchUI) { $('bFire').classList.add('hidden'); $('bMsl').classList.add('hidden'); $('bFlare').classList.add('hidden'); $('bAuto').classList.add('hidden'); $('bFire').classList.remove('hidden'); $('bFire').textContent = 'FIRE'; $('bJump').classList.remove('hidden'); $('bWpn').classList.remove('hidden'); $('bTalk').classList.remove('hidden'); $('bSv').classList.remove('hidden'); }
-  setupWorldPlay();
+  setupWorldPlay(); $('mini').classList.remove('hidden'); mini.resize();
   setTimeout(() => { if (G.walk.active && (S.geminiKey || '').trim()) startCase(false); }, 3500);
   G.hud.msg(touchUI ? 'On foot · stick = move · drag = look · walk to a car and tap 🚪 to take it' : 'On foot · WASD move · F fire · Q weapon · E take a car', 'info', 4.5);
 }
@@ -603,7 +604,7 @@ async function fetchRoads() {
 function stopWalking() {
   if (G.drive) exitCar(true);
   G.zombies.clear(); G.zombies.group.visible = false; G.cars.clear(); G.cars.group.visible = false; G.roads.clear(); G.veg.cx = 1e9; G.walk.aimTarget = 0; G.deadT = 0;
-  G.walk.leave(); G.crowd.group.visible = false; G.input.lookEnabled = false; G.input.orbit.yaw = G.input.orbit.pitch = 0; G.input.orbit.dist = 1;
+  $('mini').classList.add('hidden'); G.walk.leave(); G.crowd.group.visible = false; G.input.lookEnabled = false; G.input.orbit.yaw = G.input.orbit.pitch = 0; G.input.orbit.dist = 1;
   G.camMode = 0; G.ac.root.visible = true;
   $('bJump').classList.add('hidden'); $('bWpn').classList.add('hidden'); $('bTalk').classList.add('hidden'); $('bSv').classList.add('hidden');
   if (touchUI) { const air = isAirline(); $('bAuto').classList.toggle('hidden', !air); for (const id of ['bFire', 'bMsl', 'bFlare']) $(id).classList.toggle('hidden', air); }
@@ -847,6 +848,15 @@ function updateWalk(dt) {
   G.cars.update(dt, P, carCtx(), true);
   // real-map roads: refetch when far from the last download centre
   if (G.roads.kind === 'osm' && G.roadC && !G.roadBusy && Math.hypot(P.x - G.roadC.x, P.z - G.roadC.z) > 380) fetchRoads();
+  drawMini();
+}
+
+const mini = new Minimap($('miniC')); window.addEventListener('resize', () => mini.resize());
+function drawMini() {
+  const W = G.walk, car = G.drive, wp = G.weap;
+  mini.draw({ x: W.pos.x, z: W.pos.z, view: car ? car.yaw : W.camYaw, heading: car ? car.yaw : W.yaw, roads: G.roads, cars: G.cars.cars, mine: car, zombies: G.zombies.zs });
+  $('miniHp').style.width = Math.max(0, Math.min(100, G.pHp)) + '%';
+  $('miniAm').style.width = (wp && wp.armed && wp.weapon.mag ? Math.round(100 * wp.ammo[wp.cur].mag / wp.weapon.mag) : 0) + '%';
 }
 
 // ------------------------------------------------------------------------------------------

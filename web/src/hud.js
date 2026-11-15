@@ -307,12 +307,9 @@ export class Hud {
       g.strokeStyle = this.hitT > 0 ? '#ff5a4a' : 'rgba(255,255,255,0.9)'; g.lineWidth = 2; g.beginPath();
       g.moveTo(cx - r * 1.8, cy); g.lineTo(cx - r * 0.6, cy); g.moveTo(cx + r * 0.6, cy); g.lineTo(cx + r * 1.8, cy); g.moveTo(cx, cy - r * 1.8); g.lineTo(cx, cy - r * 0.6); g.moveTo(cx, cy + r * 0.6); g.lineTo(cx, cy + r * 1.8); g.stroke();
     }
-    if (w.hp != null) {                              // health bar + stats, bottom left
-      const st = w.stats || [], bw = Math.min(W * 0.3, fs * 13), bx = fs * 1.2, by = H - fs * 2.2, top = by - fs * 1.15 * st.length - fs * 0.5;
-      g.fillStyle = 'rgba(8,14,22,0.6)'; g.fillRect(bx - 8, top, bw + 16, H - top - fs * 1.0);
-      g.fillStyle = 'rgba(255,255,255,0.16)'; g.fillRect(bx, by, bw, fs * 0.6);
-      g.fillStyle = w.hp > 35 ? '#5be37a' : '#ff5a4a'; g.fillRect(bx, by, bw * Math.max(0, Math.min(1, w.hp / 100)), fs * 0.6);
-      g.textAlign = 'left'; g.fillStyle = '#e8f2ff'; g.font = `700 ${fs}px ui-monospace, monospace`;
+    if (w.hp != null) {                              // stats text, bottom left next to the minimap (the minimap carries the health bar)
+      const st = w.stats || [], k = W / Math.max(1, window.innerWidth), bx = (Math.min(150, Math.max(104, window.innerHeight * 0.3)) + 24) * k, by = H - fs * 1.4, top = by - fs * 1.15 * st.length;
+      g.textAlign = 'left'; g.fillStyle = '#e8f2ff'; g.font = `700 ${fs}px ui-monospace, monospace`; g.shadowColor = 'rgba(0,0,0,.9)'; g.shadowBlur = 4;
       st.forEach((t, i) => g.fillText(t, bx, top + fs * 0.9 + i * fs * 1.15));
     }
     g.restore();
