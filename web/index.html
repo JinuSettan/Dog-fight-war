@@ -88,6 +88,18 @@
   @media (max-height: 520px) { .tb { width:52px; height:52px; } #bFire { width:70px; height:70px; } .brand h1 { font-size:18px; } }
   @media (max-width: 760px) { #lobby .side { width:100vw; background:rgba(6,10,16,.84); } .fly { bottom:12px; right:12px; } .fly button { padding:13px 26px; font-size:17px; } }
 </style>
+<style>
+  #sv { position:fixed; inset:0; z-index:12; background:#000; } #sv.hidden { display:none; }
+  #svPano { position:absolute; left:0; right:0; top:0; height:62%; } #svMap { position:absolute; left:0; right:0; bottom:0; height:38%; }
+  #svBar { position:absolute; top:max(10px, env(safe-area-inset-top)); left:10px; right:66px; display:flex; gap:6px; z-index:3; }
+  #svBar input { flex:1; min-width:0; font-size:15px; padding:8px 10px; border-radius:18px; border:0; background:rgba(30,34,40,.82); color:#fff; }
+  #svBar button, #svX, #svDrop { border:0; border-radius:18px; padding:8px 14px; background:rgba(30,34,40,.85); color:#fff; font:700 14px system-ui; }
+  #svX { position:absolute; top:max(10px, env(safe-area-inset-top)); right:10px; z-index:3; width:46px; height:36px; padding:0; font-size:18px; }
+  #svDrop { position:absolute; left:10px; top:calc(62% - 52px); z-index:3; background:#0a6b78; }
+  #svDrive { position:absolute; right:14px; top:calc(62% - 84px); z-index:3; width:68px; height:68px; border-radius:50%; background:rgba(26,115,232,.85); color:#fff; display:flex; align-items:center; justify-content:center; font:700 12px system-ui; text-align:center; touch-action:none; user-select:none; -webkit-user-select:none; }
+  #svMsg { position:absolute; left:50%; top:30%; transform:translateX(-50%); max-width:82vw; padding:10px 16px; background:rgba(0,0,0,.7); color:#fff; border-radius:10px; font:600 15px system-ui; text-align:center; z-index:2; display:none; }
+  #bSv { left:76px; top:calc(34% + 176px); width:52px; height:52px; font-size:20px; }
+</style>
 </head>
 <body>
 <canvas id="gl"></canvas>
@@ -115,10 +127,13 @@
   <div class="tb" id="bFire">FIRE</div><div class="tb" id="bMsl">MSL</div><div class="tb" id="bFlare">FLR</div>
   <div class="tb" id="bGear">GEAR</div><div class="tb" id="bFlaps">FLAP</div><div class="tb" id="bBrake">BRK</div>
   <div class="tb" id="bCam">CAM</div><div class="tb" id="bMenu">❚❚</div>
-  <div class="tb" id="bUse">🚪</div><div class="tb hidden" id="bJump">JUMP</div><div class="tb hidden" id="bWpn">🔫</div><div class="tb hidden" id="bTalk">💬</div><div class="tb" id="bCine">🎬</div><div class="tb" id="bAuto">✈ AP</div>
+  <div class="tb" id="bUse">🚪</div><div class="tb hidden" id="bJump">JUMP</div><div class="tb hidden" id="bWpn">🔫</div><div class="tb hidden" id="bTalk">💬</div><div class="tb hidden" id="bSv">📍</div><div class="tb" id="bCine">🎬</div><div class="tb" id="bAuto">✈ AP</div>
 </div>
 
 <div id="loading" class="overlay hidden"><div class="modal"><h2 id="loadTitle">Loading</h2><div class="note" id="loadNote">Streaming 3D map tiles…</div><div class="loadbar"><i id="loadBar"></i></div><div class="note" id="loadSub"></div></div></div>
+<div id="sv" class="hidden"><div id="svPano"></div><div id="svMap"></div><div id="svMsg"></div>
+  <div id="svBar"><input id="svIn" placeholder="lat, lon  (paste from Google Maps)" autocomplete="off" spellcheck="false"><button id="svGoTo">Go</button></div>
+  <button id="svX">✕</button><button id="svDrop" class="hidden">🚶 Drop me here</button><div id="svDrive">🚗<br>HOLD</div></div>
 <div id="pause" class="overlay hidden"><div class="modal"><h2>PAUSED</h2><div class="btns"><button class="btn pri" id="pResume">Resume</button><button class="btn" id="pRestart">Restart</button><button class="btn" id="pLobby">Lobby</button></div></div></div>
 <div id="debrief" class="overlay hidden"><div class="modal"><h2 id="dbTitle"></h2><div class="big" id="dbBig"></div><div class="note" id="dbSub"></div><div class="grid" id="dbGrid"></div><div class="btns"><button class="btn pri" id="dRetry">Fly again</button><button class="btn" id="dWalk">🚶 Walk around</button><button class="btn" id="dLobby">Lobby</button></div></div></div>
 <div id="boot"><div style="font-size:22px;letter-spacing:.2em;font-weight:800">DOG<span style="color:#ff6a4a">FIGHT</span> WAR</div><div class="note" id="bootNote">Starting…</div></div>

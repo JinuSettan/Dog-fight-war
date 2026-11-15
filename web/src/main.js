@@ -17,6 +17,7 @@ import { Vehicles } from './vehicles.js';
 import { Roads } from './roads.js';
 import { Talk } from './talk.js';
 import { Case } from './mission.js';
+import { StreetView, parseLatLon } from './streetview.js';
 import { saveMem } from './crowd.js';
 import { flightPlan, fmtDuration } from './route.js';
 import { loadSettings, saveSettings, isTouch } from './settings.js';
@@ -200,7 +201,8 @@ function buildLobby() {
       <div class="row"><label>Along runway</label>${slider('along', -1800, 1800, 10, tune().along, (v) => v + ' m')}</div>
       <div class="row"><label>Sideways</label>${slider('across', -400, 400, 2, tune().across, (v) => v + ' m')}</div>
       <div class="row"><label>Heading</label>${slider('heading', -12, 12, 0.1, tune().heading, (v) => Number(v).toFixed(1) + '°')}</div>
-      <div class="row"><label>Ground level</label>${slider('ground', -20, 20, 0.25, tune().ground, (v) => Number(v).toFixed(1) + ' m')}</div>`;
+      <div class="row"><label>Ground level</label>${slider('ground', -20, 20, 0.25, tune().ground, (v) => Number(v).toFixed(1) + ' m')}</div>
+      <div class="row"><button class="btn" id="svLobby" style="width:100%">📍 Street View at this airport</button></div>`;
   } else if (G.tab === 'mission') {
     html = `<div class="row"><label>Mode</label>${seg('mode', [['dogfight', 'Dogfight (waves)'], ['free', 'Free flight']], S.mode)}</div>
       <div class="row"><label>Start</label>${seg('start', [['runway', 'Runway'], ['final', 'Final approach'], ['air', 'In the air']], S.start)}</div>
@@ -566,7 +568,7 @@ function startWalking() {
   G.walk.enter(G.ac.root, walkGround);
   G.walkBase = G.walk.yaw; G.input.orbit.yaw = G.input.orbit.pitch = 0; G.input.orbit.dist = 1;
   G.input.lookEnabled = true; G.noEnd = true;
-  if (touchUI) { $('bFire').classList.add('hidden'); $('bMsl').classList.add('hidden'); $('bFlare').classList.add('hidden'); $('bAuto').classList.add('hidden'); $('bFire').classList.remove('hidden'); $('bFire').textContent = 'FIRE'; $('bJump').classList.remove('hidden'); $('bWpn').classList.remove('hidden'); $('bTalk').classList.remove('hidden'); }
+  if (touchUI) { $('bFire').classList.add('hidden'); $('bMsl').classList.add('hidden'); $('bFlare').classList.add('hidden'); $('bAuto').classList.add('hidden'); $('bFire').classList.remove('hidden'); $('bFire').textContent = 'FIRE'; $('bJump').classList.remove('hidden'); $('bWpn').classList.remove('hidden'); $('bTalk').classList.remove('hidden'); $('bSv').classList.remove('hidden'); }
   setupWorldPlay();
   setTimeout(() => { if (G.walk.active && (S.geminiKey || '').trim()) startCase(false); }, 3500);
   G.hud.msg(touchUI ? 'On foot · stick = move · drag = look · walk to a car and tap 🚪 to take it' : 'On foot · WASD move · F fire · Q weapon · E take a car', 'info', 4.5);
@@ -603,7 +605,7 @@ function stopWalking() {
   G.zombies.clear(); G.zombies.group.visible = false; G.cars.clear(); G.cars.group.visible = false; G.roads.clear(); G.veg.cx = 1e9; G.walk.aimTarget = 0; G.deadT = 0;
   G.walk.leave(); G.crowd.group.visible = false; G.input.lookEnabled = false; G.input.orbit.yaw = G.input.orbit.pitch = 0; G.input.orbit.dist = 1;
   G.camMode = 0; G.ac.root.visible = true;
-  $('bJump').classList.add('hidden'); $('bWpn').classList.add('hidden'); $('bTalk').classList.add('hidden');
+  $('bJump').classList.add('hidden'); $('bWpn').classList.add('hidden'); $('bTalk').classList.add('hidden'); $('bSv').classList.add('hidden');
   if (touchUI) { const air = isAirline(); $('bAuto').classList.toggle('hidden', !air); for (const id of ['bFire', 'bMsl', 'bFlare']) $(id).classList.toggle('hidden', air); }
   G.hud.msg('Back in the cockpit', 'info', 2);
 }
@@ -733,6 +735,43 @@ $('talkGo').addEventListener('click', sendTalk); $('talkX').addEventListener('cl
 $('talkIn').addEventListener('keydown', (e) => { e.stopPropagation(); if (e.key === 'Enter') sendTalk(); else if (e.key === 'Escape') closeTalk(); });
 $('talkIn').addEventListener('keyup', (e) => e.stopPropagation());
 
+// ------------------------------------------------------------------------------------------
+// Street View (Google's viewer in an overlay: arrows to walk the real street, hold the car button to "drive")
+// ------------------------------------------------------------------------------------------
+const sv = new StreetView({ root: $('sv'), pano: $('svPano'), map: $('svMap'), msg: $('svMsg') }, { onChange: () => $('svDrop').classList.toggle('hidden', !G.walk.active) });
+function openSV(lat, lon) {
+  if (lat == null) {
+    const ll = G.walk.active ? G.world.sceneToLatLon(G.walk.pos.x, G.walk.pos.z) : null;
+    const a = curApt(); lat = ll ? ll.lat : a.lat; lon = ll ? ll.lon : a.lon;
+  }
+  if (G.state === 'playing') { G.svPrev = 'playing'; G.paused = true; G.state = 'paused'; } else G.svPrev = G.state;
+  if (!$('talkBox').classList.contains('hidden')) closeTalk();
+  $('svIn').value = lat.toFixed(5) + ', ' + lon.toFixed(5); $('svDrop').classList.add('hidden');
+  if (!(S.apiKey || '').trim()) { $('sv').classList.remove('hidden'); sv.isOpen = true; sv.say('Add your Google Maps key first (Lobby → Graphics)'); return; }
+  sv.open(lat, lon, S.apiKey.trim());
+}
+function closeSV() {
+  sv.close();
+  if (G.svPrev === 'playing' && G.state === 'paused' && $('pause').classList.contains('hidden')) { G.paused = false; G.state = 'playing'; }
+  G.svPrev = null;
+}
+function svDrop() {
+  const ll = sv.last; if (!ll || !G.walk.active) return;
+  const q = G.world.latLonToScene(ll.lat, ll.lon);
+  if (!q || G.world.tilesStatus !== 'ok') { sv.say('Drop works only with the real 3D map on'); return; }
+  closeSV();
+  if (G.drive) exitCar(true);
+  const W = G.walk, y = G.world.groundHeight(q.x, q.z, W.pos.y);
+  W.pos.set(q.x, y, q.z); W.vy = 0; W.grounded = true; G.dropT = 10;
+  setupWorldPlay();
+  G.hud.msg('Dropped at the Street View spot · map loading…', 'info', 3);
+}
+$('svX').onclick = closeSV; $('svDrop').onclick = svDrop;
+$('svGoTo').onclick = () => { const p = parseLatLon($('svIn').value); if (!p) { sv.say('Type: 10.15, 76.40  (or paste a Google Maps link)'); return; } if (sv.pano || sv.map) sv.go(p.lat, p.lon); else openSV(p.lat, p.lon); };
+$('svIn').addEventListener('keydown', (e) => { e.stopPropagation(); if (e.key === 'Enter') $('svGoTo').click(); }); $('svIn').addEventListener('keyup', (e) => e.stopPropagation());
+const dv = $('svDrive'); dv.addEventListener('pointerdown', (e) => { e.preventDefault(); sv.driveStart(); }); for (const ev of ['pointerup', 'pointercancel', 'pointerleave']) dv.addEventListener(ev, () => sv.driveStop());
+$('pane').addEventListener('click', (e) => { if (e.target && e.target.id === 'svLobby') { const a = airportOf(S.airport); openSV(a.lat, a.lon); } });
+
 function onInteract() {
   if (G.deadT > 0) return;
   if (G.drive) { exitCar(); return; }
@@ -769,6 +808,11 @@ function updateWalk(dt) {
   const aircraftCtx = { ground: walkGround, aircraft: G.ac.root, L: G.cfg.lengthM, bodyR: G.cfg.cat === 'airline' ? 2.7 : 1.9 };
   const blockedC = (from, dx, dz, d) => w.wallAhead(from.x, from.y, from.z, dx, dz, d);
   G.model.vel.set(0, 0, 0);
+  if (G.dropT > 0 && !G.drive) {            // after a Street View drop: wait for the map tiles, then stand on them
+    G.dropT -= dt; const h = w._rawTileHeight(W.pos.x, W.pos.z);
+    if (h !== null) { W.pos.y = h; G.dropT = Math.min(G.dropT, 0.4); }
+    W.vy = 0; W.grounded = true;
+  }
   if (G.drive) {
     G.radioT -= dt; if (G.radioT <= 0) { G.radioT = 40; radioTick(); }
     const car = G.drive;
@@ -829,6 +873,7 @@ function setCam(mode) {
 function handleActions() {
   const m = G.model;
   for (const a of G.input.drain()) {
+    if (a === 'pause' && sv.isOpen) { closeSV(); continue; }
     if (a === 'pause') { if (G.state === 'playing' || G.state === 'paused') setPaused(!G.paused); continue; }
     if (G.state !== 'playing') continue;
     const F = G.flight;
@@ -853,6 +898,7 @@ function handleActions() {
     else if (a === 'weapon') { if (G.walk.active && !G.drive && G.weap) G.hud.msg(G.weap.cycle(), 'info', 1); }
     else if (a === 'w1' || a === 'w2' || a === 'w3') { if (G.walk.active && !G.drive && G.weap) { G.weap.select(['ak47', 'pistol', 'none'][+a[1] - 1]); G.hud.msg(G.weap.weapon.name, 'info', 1); } }
     else if (a === 'jump') { if (G.walk.active) G.walk.jumpReq = true; }
+    else if (a === 'streetview') { if (G.walk.active && !sv.isOpen) openSV(); }
     else if (a === 'cine') {
       G.cine.on = !G.cine.on; G.cine.kind = ''; $('cineBars').classList.toggle('hidden', !G.cine.on);
       G.hud.msg(G.cine.on ? 'CINEMATIC CAMERA ON (L)' : 'Cinematic camera off', 'info', 1.6);

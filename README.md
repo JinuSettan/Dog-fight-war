@@ -74,3 +74,8 @@ sliders; they are saved per airport.
 * Flat green ground: no key or tiles failed → check the status chip in Lobby → Graphics.
 * Low FPS on phone: Lobby → Graphics → resolution Auto, Map detail Low.
 * Build failing: open the failed step in the Actions log.
+
+## Street View mode
+Press **I** (or the 📍 button while on foot), or use **Lobby → Airport → 📍 Street View**. Google's own Street View viewer opens in an overlay with a coverage map below.
+Tap the arrows to walk the street, hold **🚗** to "drive" along the road, paste `lat, lon` (or a Google Maps link) to jump anywhere, and **🚶 Drop me here** to put your character at that spot on the 3D map.
+Needs the **Maps JavaScript API** enabled for your Google key (Google Cloud console → APIs & Services). Street View imagery is shown only inside Google's viewer (their terms).
