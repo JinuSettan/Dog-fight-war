@@ -3,6 +3,7 @@
 // Scene frame: runway along Z, y up. The character model faces +Z in its own space.
 import * as THREE from 'three';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
+import { applyGrip, relaxHands } from './grip.js';
 
 const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
 const lerp = (a, b, t) => a + (b - a) * t;
@@ -167,6 +168,8 @@ export class Walker {
     if (!this.loaded) return;
     this.phase = pose(this.rig, this, dt, running);
     aimPose(this.rig, this.aim, this.kick || 0);
+    relaxHands(this.rig);
+    if (this.weapons) applyGrip(this);
   }
 
   /** third-person camera; writes position/lookAt */

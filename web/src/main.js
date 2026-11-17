@@ -823,6 +823,7 @@ function updateWalk(dt) {
     W.camYaw = G.walkBase + o.yaw;
     const jump = !!W.jumpReq; W.jumpReq = false;
     const armed = G.weap && G.weap.armed;
+    W.weapons = G.weap; W.aimPitch = Math.atan2(Math.max(-3, Math.min(12, 1.4 - o.pitch * 16)) - 1.45, 24);
     W.aimTarget = armed && !dead ? 1 : 0; W.face = armed && (fireHeld() || W.aim > 0.5 && o.drag === false && false);
     W.update(dt, { f: dead ? 0 : v.f, r: dead ? 0 : v.r, run: v.run, jump: jump && !dead }, { ...aircraftCtx, blocked: (from, nx, nz, dx, dz, d) => blockedC(from, dx, dz, d) });
     if (G.veg && G.veg.active) G.veg.push(W.pos, 0.35);

@@ -6,7 +6,7 @@ import { loadGLTF } from './walker.js';
 export const WEAPONS = {
   none: { id: 'none', name: 'Fists', mag: 0, reserve: 0 },
   pistol: { id: 'pistol', name: 'Pistol', file: 'gun_pistol.glb', mag: 12, reserve: 60, rate: 4, dmg: 34, spread: 0.004, auto: false, hold: [0.17, 1.30, 0.40], recoil: 0.05 },
-  ak47: { id: 'ak47', name: 'AK-47', file: 'gun_ak47.glb', mag: 30, reserve: 150, rate: 9.5, dmg: 26, spread: 0.014, auto: true, hold: [0.10, 1.31, 0.52], recoil: 0.035 },
+  ak47: { id: 'ak47', name: 'AK-47', file: 'gun_ak47.glb', mag: 30, reserve: 150, rate: 9.5, dmg: 26, spread: 0.014, auto: true, hold: [0.10, 1.31, 0.52], recoil: 0.035, flip: true },
 };
 const ORDER = ['ak47', 'pistol', 'none'];
 
@@ -37,8 +37,9 @@ export class Weapons {
     for (const id of ['ak47', 'pistol']) {
       try {
         const g = await loadGLTF(base + WEAPONS[id].file);
-        const m = g.scene.clone(true); m.position.set(...WEAPONS[id].hold); m.visible = false; this.holder.add(m); this.guns[id] = m;
-        const bb = new THREE.Box3().setFromObject(g.scene); m.userData.len = bb.max.z - bb.min.z; m.userData.front = bb.max.z;
+        const inner = g.scene.clone(true); if (WEAPONS[id].flip) inner.rotation.y = Math.PI;      // the AK model's muzzle points to -Z; the game wants +Z
+        const m = new THREE.Group(); m.add(inner); m.position.set(...WEAPONS[id].hold); m.visible = false; this.holder.add(m); this.guns[id] = m;
+        m.updateMatrixWorld(true); const bb = new THREE.Box3().setFromObject(m); m.userData.len = bb.max.z - bb.min.z; m.userData.front = bb.max.z;
       } catch (e) { console.warn('weapon load failed', id, e); }
     }
     this.select(this.cur);
@@ -84,10 +85,8 @@ export class Weapons {
     this.kick = Math.max(0, this.kick - dt * 6);
     this.cool -= dt;
     const w = this.weapon, g = this.guns[this.cur];
-    if (g) { g.position.z = w.hold[2] - this.kick * 0.35; g.rotation.x = -this.kick * 0.5; }
     if (this.reloadT > 0) {
       this.reloadT -= dt;
-      if (g) g.rotation.x = 0.7 * Math.sin(Math.min(1, this.reloadT) * Math.PI);
       if (this.reloadT <= 0) { const a = this.ammo[w.id], n = Math.min(w.mag - a.mag, a.reserve); a.mag += n; a.reserve -= n; this.reloadT = 0; }
       return { fired: false };
     }

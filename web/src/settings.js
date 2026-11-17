@@ -28,7 +28,7 @@ export const defaults = {
   tiltRange: 28,             // degrees of tilt = full stick
   stickSens: 1.0,
   pax: 96,
-  character: 'man',          // id from models/people/people.json
+  character: 'biker',          // id from models/people/people.json
   crowd: isTouch ? 8 : 16,   // pedestrians while on foot
   trees: isTouch ? 'low' : 'med',   // off | low | med | high
   zombies: 'auto',           // auto (New York airports) | on | off

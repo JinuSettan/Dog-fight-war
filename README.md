@@ -79,3 +79,9 @@ sliders; they are saved per airport.
 Press **I** (or the 📍 button while on foot), or use **Lobby → Airport → 📍 Street View**. Google's own Street View viewer opens in an overlay with a coverage map below.
 Tap the arrows to walk the street, hold **🚗** to "drive" along the road, paste `lat, lon` (or a Google Maps link) to jump anywhere, and **🚶 Drop me here** to put your character at that spot on the 3D map.
 Needs the **Maps JavaScript API** enabled for your Google key (Google Cloud console → APIs & Services). Street View imagery is shown only inside Google's viewer (their terms).
+
+## Player character (CC4 "Biker") and weapon grips
+- `web/public/models/people/hero.glb` is the supplied Character Creator 4 FBX, converted without changing its look (same meshes and textures, vest alpha cut-outs kept, textures ≤ 1024 px). The 101 CC4 joints were folded into 15 body bones + 30 finger bones with identity orientation so the game's rig code works. It is the default player (`people.json` → `biker`).
+- `src/grip.js`: two-bone IK puts both hands on the weapon and curls the fingers; the torso turns into a bladed stance and the head keeps looking at the target. Gun pitch follows the camera aim.
+- Fixed: the AK model's muzzle pointed backwards (it faced -Z).
+- Animation is **procedural** (idle/walk/run/jump), not motion-capture. Real clips (Mixamo, Rokoko…) are not bundled; they need an Adobe/Rokoko login to download.

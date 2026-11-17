@@ -1,6 +1,12 @@
 {
  "people": [
   {
+   "id": "biker",
+   "name": "Biker (your character)",
+   "hero": "hero.glb",
+   "lod": "man_lod.glb"
+  },
+  {
    "id": "man",
    "name": "Man",
    "hero": "man.glb",
