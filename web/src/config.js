@@ -17,7 +17,7 @@ export const AIRCRAFT = {
     wingArea: 56.5, span: 13.05, chord: 4.5, cL0: 0.05, cLMax: 1.75, stallDeg: 22,
     cD0: 0.022, kInd: 0.075, rotateKt: 145, approachKt: 150, sinkLimitFpm: 1100,
     pitchRate: 1.4, rollRate: 3.4, yawRate: 0.5, ctrlTau: 0.25, maxG: 9, minG: -3,
-    weapons: true, color: '#7fb0ff', cat: 'war',
+    weapons: true, bombs: 1, color: '#7fb0ff', cat: 'war',
   },
   mig29: {
     id: 'mig29',
@@ -53,7 +53,19 @@ export const AIRCRAFT = {
     wingArea: 56.5, span: 13.05, chord: 4.5, cL0: 0.05, cLMax: 1.75, stallDeg: 22,
     cD0: 0.021, kInd: 0.072, rotateKt: 135, approachKt: 145, sinkLimitFpm: 1100,
     pitchRate: 1.5, rollRate: 3.6, yawRate: 0.5, ctrlTau: 0.22, maxG: 9, minG: -3,
-    weapons: true, color: '#9be37a', cat: 'war',
+    weapons: true, bombs: 1, color: '#9be37a', cat: 'war',
+  },
+  b2: {
+    id: 'b2',
+    name: 'B-2 Spirit Bomber',
+    blurb: 'Stealth flying wing. Heavy, slow to turn, carries 4 nuclear bombs (Z key).',
+    model: 'models/b2.glb', noseAxis: 'yaw', noseYaw: -1.2813, lengthM: 21, gearHeight: 3.4,
+    nose: -5.5, main: 2.0, track: 11,
+    massKg: 110000, fuelKg: 60000, thrustMil: 360000, thrustAB: 360000, hasAB: false,
+    wingArea: 478, span: 52.4, chord: 9.5, cL0: 0.12, cLMax: 1.5, stallDeg: 17,
+    cD0: 0.012, kInd: 0.05, rotateKt: 135, approachKt: 140, sinkLimitFpm: 900,
+    pitchRate: 0.55, rollRate: 0.9, yawRate: 0.15, ctrlTau: 0.7, maxG: 3.5, minG: -1,
+    weapons: false, bombs: 4, color: '#9aa3ad', cat: 'war', flapsLift: 0.5,
   },
   a318: {
     id: 'a318',
@@ -69,8 +81,8 @@ export const AIRCRAFT = {
   },
 };
 
-export const AIRCRAFT_LIST = ['f15e', 'mig29', 'mig35', 'eagle', 'a318'];
-export const WAR_LIST = ['f15e', 'mig29', 'mig35', 'eagle'];
+export const AIRCRAFT_LIST = ['f15e', 'mig29', 'mig35', 'eagle', 'b2', 'a318'];
+export const WAR_LIST = ['f15e', 'mig29', 'mig35', 'eagle', 'b2'];
 export const AIRLINE_LIST = ['a318'];
 export const ENEMY_TYPES = ['mig29', 'mig35'];
 
@@ -102,6 +114,10 @@ export const AIRPORTS = [
   { icao: 'EHAM', iata: 'AMS', name: 'Amsterdam Schiphol', city: 'Amsterdam', country: 'Netherlands', lat: 52.3105, lon: 4.7683, elev: -3, hdg: 184, len: 3800 },
   { icao: 'KATL', iata: 'ATL', name: 'Hartsfield-Jackson Atlanta', city: 'Atlanta', country: 'USA', lat: 33.6407, lon: -84.4277, elev: 313, hdg: 90, len: 3048 },
 ];
+
+// "Rise of the Underworld" starts here: a Manhattan avenue (Times Square). `street: true` = no runway / airport scenery, flat street level for
+// aircraft, avenue direction = scene Z axis (Manhattan's grid is turned 29 deg from true north).
+export const CITY = { icao: 'NYCS', iata: 'NYC', name: 'Times Square, Manhattan', city: 'New York', country: 'USA', lat: 40.7580, lon: -73.9855, elev: 10, hdg: 29, len: 400, street: true };
 
 export const DIFFICULTY = {
   easy: { name: 'Easy', turnG: 4.5, fireGap: 18, gunAcc: 0.35, hp: 70, speed: 0.8, flare: 0.1 },

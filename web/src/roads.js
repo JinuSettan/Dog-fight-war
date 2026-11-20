@@ -23,17 +23,19 @@ export class Roads {
   get ready() { return this.nodes.length > 1; }
 
   // ---------------- demo terrain: procedural grid ----------------
-  buildSynthetic() {
+  buildSynthetic(o = {}) {
     this.clear(); this.kind = 'grid';
-    const S = 190, X0 = -330, NX = 8, Z0 = -1710, NZ = 19;       // intersections at x = X0 - S*i, z = Z0 + S*j
+    this.width = o.width || 9;
+    const Sx = o.Sx || o.S || 190, Sz = o.Sz || o.S || 190, X0 = o.X0 ?? -330, NX = o.NX || 8, Z0 = o.Z0 ?? -1710, NZ = o.NZ || 19;   // intersections at x = X0 - Sx*i, z = Z0 + Sz*j
+    const S = Sx;
     const id = (i, j) => i * NZ + j;
-    for (let i = 0; i < NX; i++) for (let j = 0; j < NZ; j++) this.nodes.push({ x: X0 - S * i, z: Z0 + S * j, e: [] });
+    for (let i = 0; i < NX; i++) for (let j = 0; j < NZ; j++) this.nodes.push({ x: X0 - Sx * i, z: Z0 + Sz * j, e: [] });
     const link = (a, b) => { this.nodes[a].e.push(b); this.nodes[b].e.push(a); };
     for (let i = 0; i < NX; i++) for (let j = 0; j < NZ; j++) {
       if (i + 1 < NX) link(id(i, j), id(i + 1, j));
       if (j + 1 < NZ) link(id(i, j), id(i, j + 1));
     }
-    this.synth = { S, X0, NX, Z0, NZ };
+    this.synth = { S, Sx, Sz, X0, NX, Z0, NZ };
     // ribbons
     const pos = [], uv = [], idx = [], hw = this.width / 2;
     const quad = (ax, az, bx, bz) => {
@@ -41,8 +43,8 @@ export class Roads {
       pos.push(ax + nx, 0.06, az + nz, ax - nx, 0.06, az - nz, bx + nx, 0.06, bz + nz, bx - nx, 0.06, bz - nz);
       uv.push(0, 0, 1, 0, 0, L / 14, 1, L / 14); idx.push(v, v + 1, v + 2, v + 1, v + 3, v + 2);
     };
-    for (let i = 0; i < NX; i++) quad(X0 - S * i, Z0, X0 - S * i, Z0 + S * (NZ - 1));
-    for (let j = 0; j < NZ; j++) quad(X0, Z0 + S * j, X0 - S * (NX - 1), Z0 + S * j);
+    for (let i = 0; i < NX; i++) quad(X0 - Sx * i, Z0, X0 - Sx * i, Z0 + Sz * (NZ - 1));
+    for (let j = 0; j < NZ; j++) quad(X0, Z0 + Sz * j, X0 - Sx * (NX - 1), Z0 + Sz * j);
     const g = new THREE.BufferGeometry();
     g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3)); g.setAttribute('uv', new THREE.Float32BufferAttribute(uv, 2)); g.setIndex(idx); g.computeVertexNormals();
     const cv = document.createElement('canvas'); cv.width = 128; cv.height = 128; const c = cv.getContext('2d');
@@ -59,9 +61,9 @@ export class Roads {
   /** true where a point is on / next to a drawn road (used to keep trees off the asphalt) */
   onRoad(x, z, margin = 4) {
     const s = this.synth; if (!s) return false;
-    if (z < s.Z0 - margin || z > s.Z0 + s.S * (s.NZ - 1) + margin || x > s.X0 + margin || x < s.X0 - s.S * (s.NX - 1) - margin) return false;
-    const rx = ((s.X0 - x) % s.S + s.S) % s.S, rz = ((z - s.Z0) % s.S + s.S) % s.S, w = this.width / 2 + margin;
-    return Math.min(rx, s.S - rx) < w || Math.min(rz, s.S - rz) < w;
+    if (z < s.Z0 - margin || z > s.Z0 + s.Sz * (s.NZ - 1) + margin || x > s.X0 + margin || x < s.X0 - s.Sx * (s.NX - 1) - margin) return false;
+    const rx = ((s.X0 - x) % s.Sx + s.Sx) % s.Sx, rz = ((z - s.Z0) % s.Sz + s.Sz) % s.Sz, w = this.width / 2 + margin;
+    return Math.min(rx, s.Sx - rx) < w || Math.min(rz, s.Sz - rz) < w;
   }
 
   // ---------------- real map: OpenStreetMap ----------------

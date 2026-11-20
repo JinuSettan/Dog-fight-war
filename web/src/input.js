@@ -28,7 +28,7 @@ export class Input {
       if (down) {
         if (this.keys.has(k)) return;
         this.keys.add(k);
-        const map = { KeyG: 'gear', KeyF: 'flaps', KeyM: 'missile', Enter: 'missile', KeyX: 'flare', KeyC: 'camera', KeyP: 'pause', Escape: 'pause', KeyH: 'hud', KeyR: 'restart', KeyV: 'airbrake', KeyN: 'nextTarget', KeyJ: 'autolevel', KeyL: 'cine', KeyU: 'cruise', KeyY: 'calibrate', KeyE: 'interact', Space: 'jump', KeyQ: 'weapon', KeyT: 'talk', KeyI: 'streetview', KeyO: 'targetcam', Digit1: 'w1', Digit2: 'w2', Digit3: 'w3' };
+        const map = { KeyG: 'gear', KeyF: 'flaps', KeyM: 'missile', Enter: 'missile', KeyX: 'flare', KeyC: 'camera', KeyP: 'pause', Escape: 'pause', KeyH: 'hud', KeyR: 'restart', KeyV: 'airbrake', KeyN: 'nextTarget', KeyJ: 'autolevel', KeyL: 'cine', KeyU: 'cruise', KeyZ: 'bomb', KeyY: 'calibrate', KeyE: 'interact', Space: 'jump', KeyQ: 'weapon', KeyT: 'talk', KeyI: 'streetview', KeyO: 'targetcam', Digit1: 'w1', Digit2: 'w2', Digit3: 'w3' };
         if (map[k]) this.act(map[k]);
       } else this.keys.delete(k);
     };
@@ -127,6 +127,7 @@ export class Input {
     bind('bCine', (d) => d && this.act('cine'));
     bind('bAuto', (d) => d && this.act('cruise'));
     bind('bUse', (d) => d && this.act('interact'));
+    bind('bBomb', (d) => d && this.act('bomb'));
     bind('bJump', (d) => { this.touchHand = d; if (d) this.act('jump'); }, true);
     bind('bTalk', (d) => d && this.act('talk'));
     bind('bSv', (d) => d && this.act('streetview'));
