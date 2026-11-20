@@ -74,7 +74,9 @@ export class Vegetation {
     const f = forestiness(x0 + CELL / 2, z0 + CELL / 2);
     const real = this.world.tilesStatus === 'ok' && !this.world.cruise;
     // real map already has photogrammetric trees: only add a few in open lawns, so it does not look doubled
-    const dens = (real ? 0.12 : 0.05 + f * 1.25) * L.trees;
+    // trees ONLY in forests (never on streets / in town): no baseline density any more, and none at all in the city start area
+    const inCity = !!this.world.street && Math.abs(x0 + CELL / 2) < 1000 && Math.abs(z0 + CELL / 2) < 2000;
+    const dens = inCity ? 0 : (real ? (f > 0.5 ? (f - 0.4) * 0.9 : 0) : (f > 0.3 ? (f - 0.15) * 1.25 : 0)) * L.trees;
     const r = h2(ix, iz, 1);
     let n = Math.floor(dens) + (h2(ix, iz, 2) < dens - Math.floor(dens) ? 1 : 0);
     c = { trees: [], tufts: [], filled: false, n, f, real };
@@ -92,7 +94,8 @@ export class Vegetation {
       c.trees.push({ x, y, z, type, s, rot: h2(ix, iz, 50 + i) * 6.283 });
     }
     // grass tufts: denser in meadows, none where a tree trunk sits or in dense forest floor
-    const nt = Math.round((1 - c.f * 0.6) * (c.real ? 2 : 5) * (0.6 + h2(ix, iz, 5)));
+    const nt = (this.world.street && Math.abs(ix * CELL + CELL / 2) < 1000 && Math.abs(iz * CELL + CELL / 2) < 2000) ? 0
+      : Math.round((1 - c.f * 0.6) * (c.real ? 2 : 5) * (0.6 + h2(ix, iz, 5)));
     for (let i = 0; i < nt; i++) {
       const x = ix * CELL + h2(ix, iz, 60 + i) * CELL, z = iz * CELL + h2(ix, iz, 70 + i) * CELL;
       const y = (this.avoid && this.avoid(x, z)) ? null : w.treeGround(x, z); this.pending++; if (y === null) continue;

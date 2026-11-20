@@ -60,6 +60,14 @@ npm run dev
 ```
 `npm test` runs the flight-physics tests.
 
+## RISE OF THE UNDERWORLD (New York start)
+Lobby → **▶ RISE OF THE UNDERWORLD · NEW YORK**: studio title cards, a street incident, then you are on a Manhattan avenue (procedural city; with a Google/Cesium key the real 3D map shows instead).
+- **E** next to the jet boards it. The avenue is long enough to take off; dogfights happen in New York airspace.
+- **E in the air = bail out** → free fall, parachute opens low (or press **Space** / CHUTE). A new jet is delivered after you land.
+- **Z = nuclear bomb** (B-2 carries 4, F-15E/MiG-29 carry 1; button NUKE on touch). Blast wave destroys the city and anything near.
+- Crimes (killing civilians, running people over, carjacking, shooting police) → **police** shoot to kill. Treason (5 civilian kills, killing a soldier, nuke) or 4+ stars → the **army**. Killing enemy jets/zombies is never a crime.
+- Trees now grow only in forests, not on roadsides or in cities.
+
 ## Controls
 Keyboard: arrows pitch/roll, A/D rudder, W/S or Shift/Ctrl throttle, Space gun, M missile, X flares, G gear, F flaps, B brakes,
 V airbrake, C camera (chase / cockpit / far, airliner: cabin / window seat), L cinematic camera, U airliner autopilot (press again to skip to approach),

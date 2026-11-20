@@ -6,7 +6,7 @@ import { Combat } from './combat.js';
 import { Hud } from './hud.js';
 import { Input } from './input.js';
 import { AudioEngine } from './audio.js';
-import { AIRCRAFT, WAR_LIST, AIRLINE_LIST, AIRPORTS, DIFFICULTY, RESOLUTIONS, TILE_QUALITY, TIMES, KT } from './config.js';
+import { CITY, AIRCRAFT, WAR_LIST, AIRLINE_LIST, AIRPORTS, DIFFICULTY, RESOLUTIONS, TILE_QUALITY, TIMES, KT } from './config.js';
 import { createCabin } from './cabin.js';
 import { Walker } from './walker.js';
 import { Crowd } from './crowd.js';
@@ -23,6 +23,12 @@ import { saveMem } from './crowd.js';
 import { flightPlan, fmtDuration } from './route.js';
 import { loadSettings, saveSettings, isTouch } from './settings.js';
 import { V3, Q4, clamp } from './math.js';
+import { City } from './city.js';
+import { Lawmen } from './lawmen.js';
+import { Wanted } from './wanted.js';
+import { Skydive } from './skydive.js';
+import { Nuke } from './nuke.js';
+import { Intro } from './intro.js';
 
 const $ = (id) => document.getElementById(id);
 const DEG = Math.PI / 180;
@@ -40,7 +46,7 @@ const G = {
   apt: null, flight: null, cabin: null, cine: { kind: '', shot: 0, t: 0, init: false, a0: 0, pos: new THREE.Vector3() },
 };
 window.__game = G;                              // handy for debugging / tests
-const airportOf = (icao) => AIRPORTS.find((a) => a.icao === icao) || AIRPORTS[0];
+const airportOf = (icao) => (icao === CITY.icao ? CITY : AIRPORTS.find((a) => a.icao === icao) || AIRPORTS[0]);
 const isAirline = () => S.category === 'airline';
 const curApt = () => G.apt || airportOf(S.airport);
 const CAMS = ['Chase', 'Cockpit', 'Far', 'Cabin', 'Window seat'];
@@ -64,7 +70,12 @@ async function boot() {
     G.zombies = new Zombies(G.world.scene); G.zombies.load().catch((e) => console.warn('zombies', e));
     G.cars = new Vehicles(G.world.scene); G.cars.load().catch((e) => console.warn('cars', e));
     G.talk = new Talk(() => S.geminiKey);
-    G.roads = new Roads(G.world.scene, G.world); G.veg.avoid = (x, z) => G.roads.onRoad(x, z);
+    G.roads = new Roads(G.world.scene, G.world); G.veg.avoid = (x, z) => G.roads.onRoad(x, z, 14);
+    G.city = new City(G.world.scene); G.world.city = G.city;
+    G.lawmen = new Lawmen(G.world.scene, G.audio); G.lawmen.load().catch((e) => console.warn('lawmen', e));
+    G.wanted = new Wanted(); G.sky = new Skydive(G.world.scene); G.intro = new Intro(); G.bombsLeft = 0;
+    G.nuke = new Nuke(G.world.scene, { onDetonate: (p) => onNuke(p) });
+    G.flashEl = document.createElement('div'); G.flashEl.style.cssText = 'position:fixed;inset:0;background:#fff;opacity:0;pointer-events:none;z-index:30'; document.body.appendChild(G.flashEl);
     loadPeople();
     note('Loading runway…');
     await G.world.init();
@@ -353,6 +364,7 @@ document.addEventListener('input', (e) => {
 });
 
 function showLobby() {
+  leaveCity();
   G.state = 'lobby'; G.paused = false; G.ended = false; G.flight = null; G.apt = null;
   G.cine.on = false; $('cineBars').classList.add('hidden'); G.walk.leave(); G.crowd.group.visible = false; G.noEnd = false; $('bJump').classList.add('hidden');
   G.input.lookEnabled = false; G.input.orbit.yaw = G.input.orbit.pitch = 0;
@@ -368,6 +380,7 @@ function showLobby() {
   parkOnRunway(); buildLobby();
 }
 
+$('cityBtn').onclick = () => startCity();
 $('flyBtn').onclick = () => { G.audio.on = S.sound; G.audio.start(); startFlight(); };
 $('pResume').onclick = () => setPaused(false);
 $('pRestart').onclick = () => { setPaused(false); startFlight(); };
@@ -394,6 +407,7 @@ async function waitForTiles(maxMs = 28000) {
 }
 
 async function startFlight() {
+  leaveCity();
   $('lobby').classList.add('hidden'); $('debrief').classList.add('hidden'); $('pause').classList.add('hidden');
   G.state = 'loading'; saveSettings(S);
   const ov = $('loading'); ov.classList.remove('hidden');
@@ -428,7 +442,7 @@ function placeOnFinal(dist, extraKt = 8) {
 function beginFlight() {
   const m = G.model, cfg = G.cfg, len = G.world.runwayLen || 3000;
   G.score = 0; G.hp = 100; G.flightTime = 0; G.ended = false; G.endT = 0; G.tookOff = false; G.landedT = 0; G.shake = 0; G.bonusLanding = 0;
-  G.ac.root.visible = true; G.apt = null;
+  G.ac.root.visible = true; G.apt = null; G.bombsLeft = cfg.bombs || 0; G.sky.active = false; G.sky.group.visible = false; $('bBomb').classList.toggle('hidden', !(touchUI && cfg.bombs > 0));
   m.assist = S.assist; m.groundMSL = airportOf(S.airport).elev; m.groundY = RUNWAY_Y;
   const air = isAirline();
   if (air) {
@@ -582,7 +596,7 @@ function setupWorldPlay() {
   const w = G.world, W = G.walk;
   G.pHp = 100; G.deadT = 0; G.drive = null; G.roadC = null;
   G.roads.clear(); G.cars.clear(); G.cars.setTraffic(Number(S.traffic) || 0);
-  if (w.tilesStatus === 'ok') fetchRoads(); else G.roads.buildSynthetic();
+  if (w.tilesStatus === 'ok') fetchRoads(); else G.roads.buildSynthetic(G.cityMode ? CROADS : {});
   // two parked cars in front of the player
   const f = { x: Math.sin(W.yaw), z: Math.cos(W.yaw) }, r = { x: f.z, z: -f.x };
   [['police', 9, 2.5], ['m3', 15, -2.5]].forEach(([k, d, l], i) => {
@@ -618,6 +632,7 @@ function toggleWalk() {
     return;
   }
   if (G.ended || m.crashed || (G.flight && G.flight.cruising)) return;
+  if (!m.onGround && m.pos.y - m.groundY > 40) { bail(); return; }
   if (!m.onGround || m.tele.speedKt > 1.5) { G.hud.msg('Stop the aircraft on the ground first (brake: B)', 'warn', 2.2); return; }
   if (G.combat.active && G.combat.enemies.some((e) => e.alive)) { G.hud.msg('Not during combat', 'warn', 1.5); return; }
   startWalking();
@@ -628,6 +643,7 @@ function walkHudInfo() {
   const stats = [];
   if (G.drive) { stats.push(`${Math.round(Math.abs(G.drive.speed) * 3.6)} km/h`, `CAR ${Math.round(G.drive.hp)}%`); }
   else if (G.weap && G.weap.armed) { const a = G.weap.ammo[G.weap.cur]; stats.push(`${G.weap.weapon.name}  ${a.mag}/${a.reserve}${G.weap.reloadT > 0 ? '  RELOAD' : ''}`); }
+  if (G.wanted.level > 0) stats.push(G.wanted.army ? 'WANTED ' + '★'.repeat(G.wanted.level) + '  ARMY' : 'WANTED ' + '★'.repeat(G.wanted.level));
   if (G.zombies.count && zombiesOn()) stats.push(`ZOMBIES ${G.zombies.alive}  KILLS ${G.zombies.kills}`);
   let prompt = 'On foot', near = false;
   if (G.drive) { prompt = touchUI ? 'Tap 🚪 to get out' : 'Press E to get out'; near = true; }
@@ -657,6 +673,7 @@ function hurtPlayer(d) {
 
 function respawnPlayer() {
   if (G.drive) exitCar(true);
+  G.wanted.reset(); G.lawmen.clear(); if (G.jetLost) restoreJet();
   G.walk.enter(G.ac.root, walkGround);
   G.pHp = 100; G.zombies.clear(); G.walkBase = G.walk.yaw; G.input.orbit.yaw = G.input.orbit.pitch = 0;
   G.hud.msg('Back at the aircraft', 'info', 2);
@@ -666,7 +683,7 @@ function enterCar(car) {
   const s = Math.sin(car.yaw), c = Math.cos(car.yaw);
   if (car.driver === 'npc') {
     G.crowd.eject(car.pos.x + c * 2.3, car.pos.y, car.pos.z - s * 2.3, car.pos);
-    G.hud.msg('CARJACKED  ' + car.spec.name, 'warn', 2); G.score += 50;
+    G.hud.msg('CARJACKED  ' + car.spec.name, 'warn', 2); G.score += 50; crime('carjack');
   } else G.hud.msg(car.spec.name + (car.wrecked ? ' (wrecked)' : '') + ' · W/S gas-brake · A/D steer · Space handbrake', 'info', 3);
   car.driver = 'player'; car.ai = null; G.drive = car;
   G.walk.root.visible = false; G.walk.pos.copy(car.pos); G.walk.speed = 0;
@@ -792,7 +809,7 @@ function carCtx() {
     hitPeople: (car, s, c) => {
       const test = (x, z) => { const dx = x - car.pos.x, dz = z - car.pos.z, f = dx * s + dz * c, l = dx * c - dz * s; return f > -1 && f < car.spec.L * 0.5 + 0.9 && Math.abs(l) < car.spec.W * 0.5 + 0.35; };
       for (const p of G.crowd.people) if (test(p.x, p.z) && G.crowd.knock(p.n, Math.abs(car.speed) > 9)) {
-        car.speed *= 0.93; G.audio.hit();
+        car.speed *= 0.93; G.audio.hit(); if (car === G.drive && Math.abs(car.speed) > 8) crime('runover');
         if (car === G.drive && G.msgCool <= 0) { G.msgCool = 3; G.score += 10; G.hud.msg('Hit and run!', 'warn', 1.4); }
       }
       for (const z of G.zombies.zs) if (z.state !== 'dead' && test(z.pos.x, z.pos.z) && G.zombies.runOver(z)) { car.speed *= 0.95; G.audio.hit(); G.score += 25; if (car === G.drive) G.hud.msg('ZOMBIE ROADKILL  +25', 'good', 1.2); }
@@ -814,6 +831,13 @@ function updateWalk(dt) {
     if (h !== null) { W.pos.y = h; G.dropT = Math.min(G.dropT, 0.4); }
     W.vy = 0; W.grounded = true;
   }
+  if (G.intro.on) { introTick(dt); return; }
+  if (G.sky.active) {
+    W.camYaw = G.walkBase + o.yaw;
+    const r = G.sky.update(dt, W, { f: v.f, r: v.r }, walkGround);
+    if (r) { G.input.orbit.dist = 1; if (r === 'splat') { G.hud.msg('Parachute too late!', 'bad', 2.5); setupWorldPlay(); hurtPlayer(999); } else { G.hud.msg('Safe landing — a new jet is on the way', 'good', 3.5); setupWorldPlay(); $('mini').classList.remove('hidden'); mini.resize(); setTimeout(() => { if (G.jetLost && G.state === 'playing') restoreJet(); }, 6000); } }
+    return;
+  }
   if (G.drive) {
     G.radioT -= dt; if (G.radioT <= 0) { G.radioT = 40; radioTick(); }
     const car = G.drive;
@@ -830,11 +854,12 @@ function updateWalk(dt) {
     if (G.weap) {
       W.kick = G.weap.kick; G.weap.show(true);
       const r = G.weap.update(dt, !dead && fireHeld() && W.aim > 0.6, w.camera, {
-        targets: [G.zombies, G.crowd, G.cars], world: w, groundY: W.pos.y,
+        targets: [G.zombies, G.crowd, G.cars, G.lawmen], world: w, groundY: W.pos.y,
         onHit: (tg, hit, dmg) => {
           G.hud.hitMarker();
           if (tg === G.zombies) { if (G.zombies.damage(hit.z, dmg)) { G.score += hit.head ? 75 : 50; G.hud.msg(hit.head ? 'HEADSHOT  +75' : 'ZOMBIE DOWN  +50', 'good', 1.2); } }
-          else if (tg === G.crowd) { if (G.crowd.knock(hit.n, true) && G.msgCool <= 0) { G.msgCool = 4; G.hud.msg('Civilian down — keep your head down', 'warn', 1.6); } }
+          else if (tg === G.crowd) { if (G.crowd.knock(hit.n, true)) { crime('civilian'); if (G.msgCool <= 0) { G.msgCool = 4; G.hud.msg('Civilian down — keep your head down', 'warn', 1.6); } } }
+          else if (tg === G.lawmen) { crime('shoot'); if (G.lawmen.damage(hit.z, dmg)) { crime(hit.z.type === 'army' ? 'soldier' : 'cop'); G.score += 40; } }
           else if (tg === G.cars) { const c = hit.car; c.hp -= dmg * 0.35; if (c.hp <= 0 && !c.wrecked) G.cars.impact(c, 0, { onWreck: () => G.hud.msg('Car wrecked', 'info', 1) }); }
         },
       });
@@ -846,10 +871,143 @@ function updateWalk(dt) {
   if (G.weap && G.drive) G.weap.show(false);
   G.crowd.update(dt, P, { ...aircraftCtx, blocked: blockedC }, true);
   G.zombies.update(dt, P, { ground: walkGround, blocked: blockedC, hurt: (d) => hurtPlayer(d * (G.drive ? 0.4 : 1)) }, zombiesOn() && !dead);
+  G.wanted.update(dt, G.lawmen.seen);
+  G.lawmen.update(dt, P, { ground: walkGround, blocked: blockedC, hurt: (d) => hurtPlayer(d * (G.drive ? 0.5 : 1)), los: (a, b) => { if (!G.city.synth || !G.city.group.visible) return true; const d = b.clone().sub(a), L = d.length(); d.divideScalar(L || 1); const r = G.city.rayDist(a, d, L); return r === null || r > L; } }, G.wanted.want(), !dead);
   G.cars.update(dt, P, carCtx(), true);
   // real-map roads: refetch when far from the last download centre
   if (G.roads.kind === 'osm' && G.roadC && !G.roadBusy && Math.hypot(P.x - G.roadC.x, P.z - G.roadC.z) > 380) fetchRoads();
   drawMini();
+}
+
+// ------------------------------------------------------------------------------------------
+// RISE OF THE UNDERWORLD: city start, intro, crimes, parachute, nuke
+// ------------------------------------------------------------------------------------------
+const CROADS = { Sx: 200, Sz: 80, X0: 600, NX: 7, Z0: -1600, NZ: 41, width: 12 };
+function leaveCity() {
+  if (!G.cityMode) return;
+  G.cityMode = false; if (S.prevAirport) S.airport = S.prevAirport;
+  G.city.clear(); G.city.group.visible = false; G.lawmen.clear(); G.wanted.reset(); G.nuke.clear(); G.sky.active = false; G.sky.group.visible = false; G.intro.stop(); G.introRef = null;
+  G.jetLost = false; G.world.setCruise && 0; G.roads.clear();
+}
+function crime(kind) {
+  if (!G.cityMode && !G.lawmen) return;
+  const before = G.wanted.level, army = G.wanted.army, lv = G.wanted.crime(kind);
+  if (lv > before) G.hud.msg('WANTED  ' + '★'.repeat(lv), 'bad', 2.4);
+  if (G.wanted.army && !army) G.hud.msg('TREASON — THE ARMY IS COMING', 'bad', 3.5);
+}
+function restoreJet() {
+  G.jetLost = false; G.ac.root.visible = true;
+  if (G.cityMode) { G.model.groundY = G.world.groundHeight(0, 330, RUNWAY_Y); G.model.resetOnRunway(330); } else parkOnRunway();
+  syncMesh(0);
+}
+function bail() {
+  if (!G.walk.loaded) { G.hud.msg('Character is still loading…', 'warn', 2); return; }
+  const m = G.model, pos = new THREE.Vector3(m.pos.x, m.pos.y + 2, m.pos.z), vel = new THREE.Vector3(m.vel.x, m.vel.y, m.vel.z);
+  G.combat.explode(new THREE.Vector3(m.pos.x, m.pos.y, m.pos.z), 35);
+  G.ac.root.visible = false; G.jetLost = true; G.shake = 0.8;
+  if (G.cabin) G.cabin.group.visible = false;
+  const W = G.walk; W.active = true; W.root.visible = true; G.noEnd = true; W.camYaw = Math.atan2(vel.x, vel.z);
+  G.sky.start(W, pos, vel, Math.atan2(vel.x, vel.z));
+  G.walkBase = W.camYaw; G.input.orbit.yaw = 0; G.input.orbit.pitch = 0.5; G.input.orbit.dist = 1.8; G.input.lookEnabled = true; G.drive = null; G.pHp = 100;
+  G.hud.msg(touchUI ? 'BAILED OUT · parachute opens low — tap JUMP to open now' : 'BAILED OUT · parachute opens low — press Space to open now', 'warn', 4);
+  if (touchUI) { for (const id of ['bFire', 'bMsl', 'bFlare', 'bAuto', 'bBomb']) $(id).classList.add('hidden'); $('bJump').classList.remove('hidden'); $('bJump').textContent = 'CHUTE'; }
+}
+function dropBomb() {
+  if (G.state !== 'playing' || G.walk.active || G.ended) return;
+  const m = G.model;
+  if (!(G.cfg.bombs > 0)) { G.hud.msg('No nuclear bomb on this aircraft (try the B-2)', 'warn', 2); return; }
+  if (G.bombsLeft <= 0) { G.hud.msg('NO BOMBS LEFT', 'warn', 1.5); return; }
+  if (m.onGround) { G.hud.msg('Take off first', 'warn', 1.5); return; }
+  G.bombsLeft--;
+  const f = m.forward || new THREE.Vector3(0, 0, -1);
+  G.nuke.drop(new THREE.Vector3(m.pos.x, m.pos.y - 3, m.pos.z), new THREE.Vector3(m.vel.x, m.vel.y, m.vel.z), f);
+  G.hud.msg('NUKE AWAY · ' + G.bombsLeft + ' left · get clear!', 'bad', 3);
+  if (G.cityMode) crime('bomb');
+}
+function onNuke(p) {
+  G.flashT = 2.4; G.shake = 1; G.nukeAt = p.clone(); G.nukeT0 = performance.now();
+  if (G.city.synth) G.city.blast(p.x, p.z, 1500, 520);
+  for (const q of G.crowd.people) if (Math.hypot(q.x - p.x, q.z - p.z) < 1200) G.crowd.knock(q.n, true);
+  for (const e of G.combat.enemies) if (e.alive && Math.hypot(e.pos.x - p.x, e.pos.z - p.z) < 2600) G.combat.damageEnemy(e, 9999, true);
+  G.nukeHit = false;
+}
+function nukeTick(dt) {
+  G.nuke.update(dt, (x, z, y) => G.world.groundHeight(x, z, y));
+  if (G.city.synth) G.city.update(dt);
+  if (G.flashT > 0) { G.flashT -= dt; G.flashEl.style.opacity = String(Math.min(1, G.flashT / 1.4)); } else if (G.flashEl.style.opacity !== '0') G.flashEl.style.opacity = '0';
+  if (G.nukeAt && !G.nukeHit) {
+    const t = (performance.now() - G.nukeT0) / 1000, front = t * 520, P = G.walk.active ? G.walk.pos : G.model.pos;
+    const d = Math.hypot(P.x - G.nukeAt.x, P.z - G.nukeAt.z);
+    if (d < 1100 && d < front) {
+      G.nukeHit = true; G.shake = 1;
+      if (G.walk.active) { if (G.deadT <= 0) { G.hud.msg('VAPORISED', 'bad', 3); hurtPlayer(9999); } }
+      else if (!G.ended && !G.model.crashed) G.model.crash('Caught in the nuclear blast');
+    } else if (front > 2300) G.nukeHit = true;
+  }
+}
+// intro cutscene
+function startIntro() {
+  const W = G.walk; W.pos.set(-9, 0, 215); W.pos.y = walkGround(-9, 215, 0); W.yaw = Math.PI / 2; W.camYaw = W.yaw; G.walkBase = W.yaw; W._apply(0, 0);
+  const car = G.cars.spawn('m3', 3, 500, Math.PI, 0), chase = G.cars.spawn('police', 3, 540, Math.PI, 0);
+  const target = new THREE.Vector3(3, 1, 400);
+  const cop = G.lawmen.spawnScripted('cop', new THREE.Vector3(-8.5, W.pos.y, 183), Math.PI / 2, target);
+  G.introRef = { car, chase, cop, target, H: W.pos.clone() };
+  G.ac.root.visible = false; G.cars.group.visible = true; G.lawmen.group.visible = true; $('touch').classList.add('hidden');
+  G.intro.start();
+}
+function introTick(dt) {
+  const R = G.introRef, I = G.intro; if (!R) { I.stop(); return; }
+  const shot = I.update(dt), t = I.t, H = R.H;
+  G.introShot = shot;
+  const place = (c, off) => { if (!c) return; c.pos.set(3 - (off ? 1.5 : 0), walkGround(3, H.z, 0), H.z + 24 * (8 - t) + off); c.yaw = Math.PI; c.speed = 24; G.cars._place(c); };
+  place(R.car, 0); place(R.chase, 32);
+  if (R.car) R.target.set(R.car.pos.x, R.car.pos.y + 1, R.car.pos.z);
+  const P = G.walk.pos;
+  G.crowd.update(dt, P, { ground: walkGround, aircraft: G.ac.root, L: G.cfg.lengthM, bodyR: 1, blocked: (f, nx, nz, dx, dz, d) => G.world.wallAhead(f.x, f.y, f.z, dx, dz, d) }, true);
+  G.lawmen.update(dt, P, { ground: walkGround }, { cops: 0, army: 0 }, true);
+  G.walk._apply(dt, 0);
+  if (shot < 0) finishIntro();
+}
+function finishIntro() {
+  const R = G.introRef; G.introRef = null;
+  if (R) { for (const c of [R.car, R.chase]) if (c) G.cars.remove(c); if (R.cop) { R.cop.script = null; R.cop.state = 'dead'; R.cop.lie = 0; R.cop.root.visible = false; } }
+  G.lawmen.clear(); G.ac.root.visible = true; G.input.orbit.yaw = 0; G.input.orbit.pitch = 0;
+  if (touchUI) $('touch').classList.remove('hidden');
+  G.hud.msg(touchUI ? 'Welcome to New York · walk to the jet (🚪) · crimes bring police, then the army' : 'Welcome to New York · E near the jet to board · crimes bring police, then the army', 'info', 6);
+}
+function introCamera(cam) {
+  const R = G.introRef, H = R.H, t = G.intro.t, cp = R.car ? R.car.pos : H;
+  let px, py, pz, lx, ly, lz, fov = 38;
+  if (t < 11) { px = H.x + 15; py = H.y + 1.4; pz = H.z + 34; lx = cp.x; ly = cp.y + 1.0; lz = cp.z; }
+  else { px = H.x - 3.4; py = H.y + 1.95; pz = H.z + 1.2; lx = cp.x; ly = cp.y + 1.5; lz = cp.z; fov = 46; }
+  cam.position.set(px, py, pz); _m.lookAt(cam.position, _v3.set(lx, ly, lz), _up); cam.quaternion.setFromRotationMatrix(_m); setFov(cam, fov); setNear(cam, 0.1);
+  G.camPos.copy(cam.position);
+}
+const _v3 = new THREE.Vector3();
+async function startCity() {
+  $('lobby').classList.add('hidden'); $('debrief').classList.add('hidden'); $('pause').classList.add('hidden');
+  G.state = 'loading'; G.audio.on = S.sound; G.audio.start();
+  const ov = $('loading'); ov.classList.remove('hidden'); $('loadTitle').textContent = 'New York'; $('loadNote').textContent = 'Building the city…'; $('loadBar').style.width = '40%';
+  const w = G.world; if (w.cruise) w.setCruise(false);
+  if (!G.cityMode) S.prevAirport = S.airport === CITY.icao ? 'KJFK' : S.airport;
+  G.cityMode = true; S.airport = CITY.icao; G.apt = null; G.cine.on = false; $('cineBars').classList.add('hidden'); G.walk.leave(); G.crowd.group.visible = false;
+  await w.setAirport(CITY, {});
+  G.model.groundMSL = CITY.elev; G.model.groundY = w.groundHeight(0, 330, RUNWAY_Y);
+  G.combat.reset(G.cfg); G.combat.active = S.mode === 'dogfight'; G.hud.msgs = [];
+  G.score = 0; G.hp = 100; G.flightTime = 0; G.ended = false; G.endT = 0; G.tookOff = false; G.landedT = 0; G.shake = 0; G.bombsLeft = G.cfg.bombs || 0; G.jetLost = false; G.flight = null; buildCabinFor(0);
+  G.wanted.reset(); G.lawmen.clear(); G.nuke.clear();
+  G.roads.clear(); G.roads.buildSynthetic(CROADS);
+  const tilesOk = w.tilesStatus === 'ok';
+  if (tilesOk) { G.city.clear(); G.city.group.visible = false; } else G.city.build(G.roads.synth, CROADS.width);
+  G.city.setLit(/night|dusk/.test(String(S.time)) ? 1 : 0);
+  G.model.resetOnRunway(330); G.model.input.throttle = 0; G.ac.root.visible = true; syncMesh(0);
+  await waitForTiles(12000);
+  ov.classList.add('hidden');
+  G.state = 'playing'; G.t0 = performance.now(); G.paused = false;
+  G.walk.enter(G.ac.root, walkGround); G.input.lookEnabled = true; G.noEnd = true; G.camMode = 0;
+  startWalking();
+  if (G.walk.active) startIntro();
+  $('bBomb').classList.add('hidden');
 }
 
 const mini = new Minimap($('miniC')); window.addEventListener('resize', () => mini.resize());
@@ -884,11 +1042,13 @@ function setCam(mode) {
 function handleActions() {
   const m = G.model;
   for (const a of G.input.drain()) {
+    if (G.intro && G.intro.on && (a === 'pause' || a === 'jump' || a === 'interact')) { G.intro.skip(); continue; }
     if (a === 'pause' && sv.isOpen) { closeSV(); continue; }
     if (a === 'pause') { if (G.state === 'playing' || G.state === 'paused') setPaused(!G.paused); continue; }
     if (G.state !== 'playing') continue;
     const F = G.flight;
-    const lock = (F && F.cruising) || G.walk.active;               // while on autopilot only camera / hud / pause actions work
+    const lock = (F && F.cruising) || G.walk.active;
+    if (a === 'bomb') { dropBomb(); continue; }               // while on autopilot only camera / hud / pause actions work
     if (a === 'gear' && !lock) { if (!m.toggleGear()) G.hud.msg('Cannot retract gear on the ground', 'warn', 1.5); else G.hud.msg(m.gearDown ? 'GEAR DOWN' : 'GEAR UP', 'info', 1.2); }
     else if (a === 'flaps' && !lock) { m.cycleFlaps(); G.hud.msg('FLAPS ' + Math.round(m.flapsTarget * 100) + '%', 'info', 1.2); }
     else if (a === 'airbrake' && !lock) { m.setAirbrake(!m.airbrake); G.hud.msg(m.airbrake ? 'AIRBRAKE' : 'AIRBRAKE IN', 'info', 1); }
@@ -908,7 +1068,8 @@ function handleActions() {
     else if (a === 'case') { if (G.walk.active) startCase(true); }
     else if (a === 'weapon') { if (G.walk.active && !G.drive && G.weap) G.hud.msg(G.weap.cycle(), 'info', 1); }
     else if (a === 'w1' || a === 'w2' || a === 'w3') { if (G.walk.active && !G.drive && G.weap) { G.weap.select(['ak47', 'pistol', 'none'][+a[1] - 1]); G.hud.msg(G.weap.weapon.name, 'info', 1); } }
-    else if (a === 'jump') { if (G.walk.active) G.walk.jumpReq = true; }
+    else if (a === 'jump') { if (G.sky.active) G.sky.opening = true; else if (G.walk.active) G.walk.jumpReq = true; }
+    else if (a === 'bomb') { dropBomb(); }
     else if (a === 'streetview') { if (G.walk.active && !sv.isOpen) openSV(); }
     else if (a === 'cine') {
       G.cine.on = !G.cine.on; G.cine.kind = ''; $('cineBars').classList.toggle('hidden', !G.cine.on);
@@ -929,6 +1090,7 @@ function updateGameplay(dt) {
   handleActions();
   if (G.state !== 'playing') return;
   G.flightTime += dt;
+  nukeTick(dt);
   if (G.walk.active) { updateWalk(dt); return; }
   if (F && F.cruising) { updateCruise(dt); syncMesh(dt); G.warn = {}; return; }
   inp.update(dt, m.onGround);
@@ -953,7 +1115,7 @@ function updateGameplay(dt) {
       else if (bonus && !m.crashed) { G.score += bonus; G.bonusLanding = bonus; }
       G.hud.msg(`${m.landing.text.toUpperCase()}  ${m.landing.fpm} fpm${!F && bonus ? '  +' + bonus : ''}`, m.landing.quality >= 1 ? 'good' : 'warn', 3.2);
     } else if (ev === 'liftoff') {
-      G.noEnd = false;
+      G.noEnd = !!G.cityMode;
       if (!G.tookOff) { G.tookOff = true; if (!F) G.score += 50; G.hud.msg(F ? 'AIRBORNE · gear up (G) · autopilot (U) above 6000 ft' : 'AIRBORNE  +50  ·  gear up (G)', 'good', 3); }
     } else if (ev === 'crash') {
       G.combat.explode(m.pos, 55); G.ac.root.visible = false; G.endT = 0; G.ended = true; G.shake = 1;
@@ -1107,6 +1269,7 @@ const _cs = { pos: new THREE.Vector3(), look: new THREE.Vector3(), fov: 60 };
 
 function placeCamera(dt, snap = false) {
   const cam = G.world.camera, m = G.model, cfg = G.cfg, o = G.input.orbit;
+  if (G.intro && G.intro.on && G.introRef) { introCamera(cam); return; }
   const pq = G.ac.root.quaternion; const pp = G.ac.root.position;
   const alive = !(G.ended && m.crashed);
   const L = cfg.lengthM;
@@ -1257,4 +1420,5 @@ function loop(now) {
   }
 }
 
+window.__fn = { bail, dropBomb, startCity, restoreJet, stopWalking, startFlight, crime };
 boot();

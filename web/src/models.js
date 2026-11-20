@@ -49,6 +49,7 @@ export async function createAircraft(id) {
   if (cfg.noseAxis === '+x') pivot.rotation.y = Math.PI / 2;
   else if (cfg.noseAxis === '+z') pivot.rotation.y = Math.PI;
   else if (cfg.noseAxis === '-x') pivot.rotation.y = -Math.PI / 2;
+  else if (cfg.noseAxis === 'yaw') pivot.rotation.y = cfg.noseYaw || 0;      // arbitrary angle (the B-2 model is turned about 73 deg)
   pivot.updateMatrixWorld(true);
 
   // 2. measure (ignore far-away helper geometry by using the whole box)

@@ -270,8 +270,12 @@ export class World {
   async setAirport(ap, tune = {}) {
     this.airport = ap;
     this.tune = { along: 0, across: 0, heading: 0, ground: 0, ...tune };
-    if (!this.runway || Math.abs((this.runwayLen || 0) - ap.len) > 1) await this.setAirportRunway(ap.len);
-    await this.buildScenery(ap);
+    this.street = !!ap.street;                         // city start: no runway, no airport buildings, flat "street level" for aircraft
+    this.runwayHolder.visible = !this.street;
+    if (!this.street) {
+      if (!this.runway || Math.abs((this.runwayLen || 0) - ap.len) > 1) await this.setAirportRunway(ap.len);
+      await this.buildScenery(ap);
+    }
     if (this.reorient && this.tiles) {
       this.reorient.transformLatLonHeightToOrigin(ap.lat * DEG, ap.lon * DEG, 0);
       this.reorient.lat = ap.lat * DEG; this.reorient.lon = ap.lon * DEG;
@@ -281,6 +285,7 @@ export class World {
   }
 
   async buildScenery(ap) {
+    if (ap.street) return;
     const token = (this._sceneryToken = (this._sceneryToken || 0) + 1);
     if (this.scenery) { this.runwayHolder.remove(this.scenery.root); this.scenery = null; }
     const W = (this.runway && this.runway.userData.width) || 45;
@@ -364,19 +369,21 @@ export class World {
 
   /** distance along a ray to the first wall / building (map or airport scenery), or null */
   rayWall(origin, dir, far = 200) {
+    const cityD = this.city && this.city.group.visible ? this.city.rayDist(origin, dir, far) : null;
     const targets = [];
     if (this.tiles && this.tilesStatus === 'ok' && !this.cruise) targets.push(this.tiles.group);
     if (this.scenery && this.scenery.buildings.visible) targets.push(this.scenery.buildings);
-    if (!targets.length) return null;
+    if (!targets.length) return cityD;
     this._ray.set(origin, dir); this._ray.far = far;
     const h = this._ray.intersectObjects(targets, true);
-    return h.length ? h[0].distance : null;
+    const d = h.length ? h[0].distance : null;
+    return d === null ? cityD : cityD === null ? d : Math.min(d, cityD);
   }
 
   /** ground for placing vegetation: null where trees must not grow (water, runway zone, roofs, steep walls) */
   treeGround(x, z) {
     const halfL = (this.runwayLen || 3000) / 2 + 400;
-    if (x > -130 && x < 560 && Math.abs(z) < halfL) return null;
+    if (!this.street && x > -130 && x < 560 && Math.abs(z) < halfL) return null;
     if (this.tiles && this.tilesStatus === 'ok' && !this.cruise && this.groundCalibrated) {
       const h = this._rawTileHeight(x, z); if (h === null) return null;
       // rooftop / wall rejection: the spot must not stand clearly above its surroundings
@@ -396,7 +403,7 @@ export class World {
   /** pedestrian ground: nearest surface below (y0 + 2.5 m) so roofs / bridges overhead are ignored */
   walkGround(x, z, y0 = 0) {
     const halfL = (this.runwayLen || 3000) / 2 + 350;
-    if (Math.abs(x) < 110 && Math.abs(z) < halfL) return RUNWAY_Y;
+    if (!this.street && Math.abs(x) < 110 && Math.abs(z) < halfL) return RUNWAY_Y;
     if (this.tiles && this.tilesStatus === 'ok' && !this.cruise && this.groundCalibrated) {
       this._org.set(x, y0 + 2.5, z); this._ray.set(this._org, this._down); this._ray.far = 60;
       const hits = this._ray.intersectObject(this.tiles.group, true);
@@ -408,6 +415,7 @@ export class World {
 
   /** true when a wall (map building or scenery) is within `dist` metres of (from) in direction (dx,dz) at knee and chest height */
   wallAhead(px, py, pz, dx, dz, dist) {
+    if (this.city && this.city.group.visible && this.city.blocked(px + dx * dist, pz + dz * dist, 0.35)) return true;
     const targets = [];
     if (this.tiles && this.tilesStatus === 'ok' && !this.cruise) targets.push(this.tiles.group);
     if (this.scenery && this.scenery.buildings.visible) targets.push(this.scenery.buildings);
@@ -421,7 +429,8 @@ export class World {
   }
 
   groundHeight(x, z, prev = 0) {
-    // flat virtual runway zone
+    // flat virtual runway zone (street start: the whole city is one flat slab for aircraft, so a jet can take off from an avenue)
+    if (this.street) return this.tilesStatus === 'ok' && this.groundCalibrated ? RUNWAY_Y : 0;
     const halfL = (this.runwayLen || 3000) / 2 + 350;
     if (Math.abs(x) < 110 && Math.abs(z) < halfL) return RUNWAY_Y;
     if (this.tiles && this.tilesStatus === 'ok' && !this.cruise) {
